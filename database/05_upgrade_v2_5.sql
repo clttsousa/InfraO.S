@@ -1,0 +1,3 @@
+-- v2.5
+-- Esta versão não exige alterações estruturais no banco.
+-- Exportação, refinamento visual e responsividade foram implementados na aplicação.

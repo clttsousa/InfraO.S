@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="infraosIconGradient" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366f1" />
+      <stop offset="1" stop-color="#0066ff" />
+    </linearGradient>
+  </defs>
+  <rect x="5" y="5" width="54" height="54" rx="18" fill="#0f172a" />
+  <rect x="7.5" y="7.5" width="49" height="49" rx="15.5" stroke="url(#infraosIconGradient)" stroke-opacity="0.35" />
+  <path d="M18 22.5C18 18.3579 21.3579 15 25.5 15H38.5C42.6421 15 46 18.3579 46 22.5V31.5C46 35.6421 42.6421 39 38.5 39H33L27.5 45.5C27.0286 46.0572 26.1958 46.0913 25.6808 45.5744C25.4362 45.3291 25.2986 44.9968 25.2986 44.6504V39H25.5C21.3579 39 18 35.6421 18 31.5V22.5Z" fill="url(#infraosIconGradient)" fill-opacity="0.18" stroke="url(#infraosIconGradient)" stroke-width="2.5" />
+  <circle cx="25" cy="27" r="4.5" fill="url(#infraosIconGradient)" />
+  <circle cx="39" cy="23" r="3.5" fill="#ffffff" fill-opacity="0.88" />
+  <circle cx="38.5" cy="33.5" r="4" fill="#0066ff" />
+  <path d="M28.8 25.5L35.4 23.6" stroke="#ffffff" stroke-opacity="0.82" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M28.7 28.9L34.8 31.9" stroke="#ffffff" stroke-opacity="0.82" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M42.5 12.5L46 16" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M46 12.5L42.5 16" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" />
+</svg>
