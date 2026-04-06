@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shared/app-shell";
+import { getNotificationSummary } from "@/lib/data";
 import { getSessionUser } from "@/lib/session";
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
@@ -10,5 +11,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     redirect("/login");
   }
 
-  return <AppShell user={session}>{children}</AppShell>;
+  const notifications = await getNotificationSummary();
+
+  return <AppShell user={session} notifications={notifications}>{children}</AppShell>;
 }

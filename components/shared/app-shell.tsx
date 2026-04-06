@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
 import type { SessionUser } from "@/lib/auth";
+import type { NotificationSummary } from "@/types";
 
-export function AppShell({ children, user }: { children: ReactNode; user: SessionUser }) {
+export function AppShell({ children, user, notifications }: { children: ReactNode; user: SessionUser; notifications: NotificationSummary }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -15,7 +16,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
       <div className="mx-auto flex min-h-screen max-w-[1800px]">
         <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <Topbar pathname={pathname} user={user} onMenuClick={() => setMobileOpen(true)} />
+          <Topbar pathname={pathname} user={user} notifications={notifications} onMenuClick={() => setMobileOpen(true)} />
           <main className="flex-1">{children}</main>
         </div>
       </div>

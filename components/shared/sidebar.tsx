@@ -68,10 +68,7 @@ function SidebarBody({ user, onNavigate, compact = false }: { user: SessionUser;
           );
         })}
       </nav>
-      <div className="mt-auto space-y-3 p-4">
-        <div className="app-surface rounded-[1.05rem] p-4 text-sm leading-6 text-[var(--text-secondary)]">
-          Técnicos seguem sem acesso ao sistema. Gestão de usuários, técnicos e configurações fica restrita ao administrador.
-        </div>
+      <div className="mt-auto p-4">
         <div className="app-surface-muted flex items-center gap-2 rounded-[1.05rem] px-4 py-3 text-sm text-[var(--text-secondary)]">
           <ShieldCheck className="h-4 w-4 text-[var(--text-tertiary)]" />
           Perfil atual:

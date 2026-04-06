@@ -39,7 +39,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
         <input name="from" defaultValue={report?.filters.from ?? ""} type="date" className="input-base text-sm outline-none" />
         <input name="to" defaultValue={report?.filters.to ?? ""} type="date" className="input-base text-sm outline-none" />
         <select name="technician" defaultValue={report?.filters.technicianId ?? ""} className="select-base text-sm outline-none">
-          <option value="">Técnico: Todos</option>
+          <option value="">Técnico envolvido: Todos</option>
           {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}
         </select>
         <select name="status" defaultValue={report?.filters.status ?? ""} className="select-base text-sm outline-none">
@@ -97,7 +97,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
           <Surface className="overflow-hidden">
             <div className="border-b border-[var(--border)] px-5 py-4">
               <h3 className="app-title text-lg font-semibold">Produtividade por técnico</h3>
-              <p className="app-text-secondary text-sm leading-6">Visão básica de volume, atrasos, pendências e tempo médio de conclusão.</p>
+              <p className="app-text-secondary text-sm leading-6">Visão de volume, atrasos, pendências e tempo médio considerando ordens como responsável principal ou apoio.</p>
             </div>
             <div className="app-scrollbar overflow-auto">
               <table className="w-full min-w-[900px] text-left text-sm">

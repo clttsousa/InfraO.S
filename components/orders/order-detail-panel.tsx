@@ -1,5 +1,19 @@
 import type { ReactNode } from "react";
-import { Ban, CheckCircle2, MapPin, MessageSquare, Pencil, RefreshCw, RotateCcw, X } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  ClipboardPen,
+  History,
+  MapPin,
+  MessageSquare,
+  Pencil,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  TriangleAlert,
+  UserRound,
+  X
+} from "lucide-react";
 import {
   addServiceOrderNoteAction,
   cancelServiceOrderAction,
@@ -9,9 +23,23 @@ import {
   updateServiceOrderStatusAction
 } from "@/app/(protected)/orders/actions";
 import { PriorityBadge, StatusBadge } from "@/components/orders/order-status";
-import { Button, ButtonLink, EmptyState, FeedbackMessage, SelectInput, StatLine, Surface, TextAreaInput, TextInput } from "@/components/shared/ui";
+import { SupportTechnicianSelector } from "@/components/orders/support-technician-selector";
+import { FormStateGuard } from "@/components/shared/form-state-guard";
+import { SubmitButton } from "@/components/shared/form-submit-button";
+import {
+  ButtonLink,
+  EmptyState,
+  FeedbackMessage,
+  FormHint,
+  FormSection,
+  SelectInput,
+  StatLine,
+  Surface,
+  TextAreaInput,
+  TextInput
+} from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_OPTIONS } from "@/lib/constants";
-import type { InternalUserItem, ServiceOrderDetail, TechnicianItem } from "@/types";
+import type { InternalUserItem, ServiceOrderDetail, ServiceOrderLogItem, TechnicianItem } from "@/types";
 
 function buildHref(baseHref: string, action?: string) {
   if (!action) return baseHref;
@@ -34,10 +62,39 @@ function actionTitle(action?: string) {
   }
 }
 
+function getLogMeta(log: ServiceOrderLogItem) {
+  const base = log.description.toLowerCase();
+  if (base.includes("finalizou")) return { icon: CheckCircle2, tone: "success", label: "Fechamento" };
+  if (base.includes("cancel")) return { icon: Ban, tone: "danger", label: "Cancelamento" };
+  if (base.includes("reabriu")) return { icon: RotateCcw, tone: "info", label: "Reabertura" };
+  if (base.includes("status")) return { icon: RefreshCw, tone: "warning", label: "Mudança de status" };
+  if (base.includes("observação")) return { icon: MessageSquare, tone: "info", label: "Observação" };
+  if (base.includes("editou") || base.includes("alterou")) return { icon: Pencil, tone: "primary", label: "Edição" };
+  return { icon: History, tone: "neutral", label: "Registro" };
+}
+
 function ActionFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap gap-2 border-t border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-1 pt-4">
+    <div className="sticky bottom-0 -mx-5 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-1 pt-4">
       {children}
+    </div>
+  );
+}
+
+function DetailTimelineCard({ title, subtitle, note, when, tone, icon }: { title: string; subtitle: string; note?: string | null; when: string; tone: string; icon: ReactNode }) {
+  return (
+    <div className={`timeline-card timeline-card-${tone}`}>
+      <div className={`timeline-icon timeline-icon-${tone}`}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-[var(--text-primary)]">{title}</div>
+            <div className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{subtitle}</div>
+          </div>
+          <div className="text-xs text-[var(--text-tertiary)]">{when}</div>
+        </div>
+        {note ? <div className="mt-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm leading-6 text-[var(--text-secondary)]">{note}</div> : null}
+      </div>
     </div>
   );
 }
@@ -54,7 +111,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
   const canFinishOrCancel = order.rawStatus !== "FINALIZADA" && order.rawStatus !== "CANCELADA";
 
   return (
-    <div className="relative space-y-6 p-6">
+    <div className="relative space-y-6 p-6 animate-fadeIn">
       {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
       {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
 
@@ -64,7 +121,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
         <p className="app-text-secondary mt-1">Cliente: {order.clientName ?? "Sem cliente vinculado"}</p>
       </div>
 
-      {order.isLate ? <div className="alert-danger">Prazo vencido. Esta O.S. está atrasada, mas o status real continua <span className="font-semibold">{order.rawStatus}</span>.</div> : null}
+      {order.isLate ? <div className="alert-danger"><TriangleAlert className="h-4 w-4" />Prazo vencido. Esta O.S. está atrasada, mas o status real continua <span className="font-semibold">{order.rawStatus}</span>.</div> : null}
       {!order.isLate && order.isDueToday ? <div className="alert-warning">Atenção: esta O.S. vence hoje e ainda não foi encerrada.</div> : null}
       {order.isStale ? <div className="alert-neutral">Sem atualização recente nas últimas 24 horas.</div> : null}
 
@@ -104,6 +161,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
         <h3 className="app-title text-lg font-semibold">Detalhes internos</h3>
         <div className="mt-3 grid grid-cols-1 gap-x-6 md:grid-cols-2">
           <StatLine label="Técnico responsável" value={order.assignedTechnician} />
+          <StatLine label="Equipe de apoio" value={order.supportTechnicians.length ? order.supportTechnicians.map((item) => item.name).join(", ") : "Sem apoio"} />
           <StatLine label="Responsável interno" value={order.internalOwner} />
           <StatLine label="Prazo" value={order.deadline} />
           <StatLine label="Criado por" value={order.createdByName} />
@@ -119,44 +177,20 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
       </Surface>
 
       <Surface className="p-5">
-        <h3 className="app-title text-lg font-semibold">Observações internas</h3>
-        {order.notes.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem observações" description="Adicione notas internas para registrar contexto operacional adicional." /></div> : (
-          <div className="timeline mt-4 space-y-4">
-            {order.notes.map((note) => (
-              <div key={note.id} className="timeline-item">
-                <div className="timeline-dot" />
-                <div className="app-surface-muted rounded-[var(--radius-control)] p-3">
-                  <div className="text-sm text-[var(--text-primary)]">{note.note}</div>
-                  <div className="mt-1 text-xs text-[var(--text-tertiary)]">{note.author} · {note.when}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Observações internas</h3></div>
+        {order.notes.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem observações" description="Adicione notas internas para registrar contexto operacional adicional." /></div> : <div className="mt-4 space-y-3">{order.notes.map((note) => <DetailTimelineCard key={note.id} title={note.author} subtitle="Registrou uma observação interna nesta ordem." note={note.note} when={note.when} tone="info" icon={<MessageSquare className="h-4 w-4" />} />)}</div>}
       </Surface>
 
       <Surface className="p-5">
-        <h3 className="app-title text-lg font-semibold">Histórico da O.S.</h3>
-        {order.logs.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem histórico" description="Quando houver ações na ordem, a timeline ficará disponível aqui." /></div> : (
-          <div className="timeline mt-4 space-y-4">
-            {order.logs.map((log) => (
-              <div key={log.id} className="timeline-item">
-                <div className="timeline-dot" />
-                <div>
-                  <div className="text-sm text-[var(--text-secondary)]"><span className="font-medium text-[var(--text-primary)]">{log.actor}</span> {log.description}</div>
-                  {log.note ? <div className="mt-1 text-sm text-[var(--text-secondary)]">{log.note}</div> : null}
-                  <div className="mt-1 text-xs text-[var(--text-tertiary)]">{log.when}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2"><History className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Timeline da O.S.</h3></div>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">Leitura cronológica refinada das alterações, reaberturas, status e edições relevantes.</p>
+        {order.logs.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem histórico" description="Quando houver ações na ordem, a timeline ficará disponível aqui." /></div> : <div className="mt-4 space-y-3">{order.logs.map((log) => { const meta = getLogMeta(log); const Icon = meta.icon; return <DetailTimelineCard key={log.id} title={meta.label} subtitle={`${log.actor} · ${log.description}`} note={log.note} when={log.when} tone={meta.tone} icon={<Icon className="h-4 w-4" />} />; })}</div>}
       </Surface>
 
       {action ? (
         <div className="fixed inset-0 z-30 overflow-y-auto bg-black/45 p-4 backdrop-blur-sm">
           <div className="flex min-h-full items-start justify-center py-2 md:py-8">
-            <div className="app-panel w-full max-w-2xl overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)] max-h-[calc(100vh-2rem)]">
+            <div className="app-panel animate-scaleIn w-full max-w-2xl overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)] max-h-[calc(100vh-2rem)]">
               <div className="sticky top-0 z-10 -mx-5 flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-4 pt-1">
                 <div>
                   <p className="app-eyebrow text-xs font-medium">Ação rápida</p>
@@ -166,91 +200,115 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
               </div>
 
               {action === "edit" ? (
-                <form action={updateServiceOrderAction} className="mt-5 space-y-4">
+                <form id="order-edit-form" action={updateServiceOrderAction} className="mt-5 space-y-4">
+                  <FormStateGuard formId="order-edit-form" />
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "edit")} />
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <TextInput label="Número da O.S." name="orderNumber" defaultValue={order.number} required />
-                    <TextInput label="Data de abertura" name="openedAt" type="datetime-local" defaultValue={order.openedAtInput} />
-                    <TextInput label="Usuário da abertura" name="openedBy" defaultValue={order.openedBy === "—" ? "" : order.openedBy} />
-                    <TextInput label="Código do cliente (opcional)" name="clientCode" defaultValue={order.clientCode ?? ""} />
-                    <TextInput label="Nome do cliente (opcional)" name="clientName" defaultValue={order.clientName ?? ""} />
-                    <TextInput label="Localização (opcional)" name="locationLink" defaultValue={order.locationLink ?? ""} />
-                    <div className="md:col-span-2"><TextInput label="Endereço (opcional)" name="addressText" defaultValue={order.address ?? ""} /></div>
-                    <div className="md:col-span-2"><TextAreaInput label="Descrição da abertura" name="openingDescription" defaultValue={order.openingDescriptionRaw} rows={4} /></div>
-                    <SelectInput label="Técnico responsável" name="technicianId" defaultValue={order.technicianId ?? ""} options={[{ label: "Selecione um técnico", value: "" }, ...activeTechnicians.map((item) => ({ label: item.name, value: item.id }))]} />
-                    <SelectInput label="Responsável interno" name="internalOwnerId" defaultValue={order.internalOwnerId ?? ""} options={activeUsers.map((item) => ({ label: item.name, value: item.id }))} />
-                    <SelectInput label="Prioridade" name="priority" defaultValue={order.rawPriority} options={ORDER_PRIORITY_OPTIONS.map((item) => ({ label: item.label, value: item.value }))} />
-                    <TextInput label="Prazo" name="deadlineAt" type="datetime-local" defaultValue={order.deadlineInput} />
-                  </div>
-                  <TextAreaInput label="Observação interna" name="internalNote" defaultValue={order.internalNote === "Sem observação interna." ? "" : order.internalNote} rows={4} />
+                  <FormHint>Layout reorganizado para editar dados sem perder contexto. Campos obrigatórios vêm primeiro.</FormHint>
+                  <FormSection title="Dados principais" description="Revise abertura, cliente e descrição antes de salvar." icon={<ClipboardPen className="h-4 w-4 text-[var(--primary)]" />}>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <TextInput autoFocus label="Número da O.S." name="orderNumber" defaultValue={order.number} required />
+                      <TextInput label="Data de abertura" name="openedAt" type="datetime-local" defaultValue={order.openedAtInput} />
+                      <TextInput label="Usuário da abertura" name="openedBy" defaultValue={order.openedBy === "—" ? "" : order.openedBy} />
+                      <TextInput label="Código do cliente" name="clientCode" defaultValue={order.clientCode ?? ""} />
+                      <TextInput label="Nome do cliente" name="clientName" defaultValue={order.clientName ?? ""} />
+                      <TextInput label="Localização" name="locationLink" defaultValue={order.locationLink ?? ""} />
+                      <div className="md:col-span-2"><TextInput label="Endereço" name="addressText" defaultValue={order.address ?? ""} /></div>
+                      <div className="md:col-span-2"><TextAreaInput label="Descrição da abertura" name="openingDescription" defaultValue={order.openingDescriptionRaw} rows={4} required /></div>
+                    </div>
+                  </FormSection>
+                  <FormSection title="Tratativa interna" description="Responsáveis, prioridade e prazo visíveis no mesmo bloco." icon={<Sparkles className="h-4 w-4 text-[var(--primary)]" />} compact>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <SelectInput label="Técnico responsável" name="technicianId" defaultValue={order.technicianId ?? ""} options={[{ label: "Selecione um técnico", value: "" }, ...activeTechnicians.map((item) => ({ label: item.name, value: item.id }))]} description="Quem puxa a execução principal da ordem." />
+                      <SelectInput label="Responsável interno" name="internalOwnerId" defaultValue={order.internalOwnerId ?? ""} options={activeUsers.map((item) => ({ label: item.name, value: item.id }))} required />
+                      <SelectInput label="Prioridade" name="priority" defaultValue={order.rawPriority} options={ORDER_PRIORITY_OPTIONS.map((item) => ({ label: item.label, value: item.value }))} />
+                      <TextInput label="Prazo" name="deadlineAt" type="datetime-local" defaultValue={order.deadlineInput} />
+                    </div>
+                    <div className="mt-4"><SupportTechnicianSelector technicians={activeTechnicians} selectedIds={order.supportTechnicianIds} /></div>
+                    <div className="mt-4"><TextAreaInput label="Observação interna" name="internalNote" defaultValue={order.internalNote === "Sem observação interna." ? "" : order.internalNote} rows={4} /></div>
+                  </FormSection>
                   <ActionFooter>
-                    <Button type="submit">Salvar alterações</Button>
-                    <ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink>
+                    <div><p className="text-sm font-semibold text-[var(--text-primary)]">Salvar com segurança</p><p className="field-hint">O histórico registra a edição principal e mudanças relevantes.</p></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar alterações</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
 
               {action === "status" ? (
-                <form action={updateServiceOrderStatusAction} className="mt-5 space-y-4">
+                <form id="order-status-form" action={updateServiceOrderStatusAction} className="mt-5 space-y-4">
+                  <FormStateGuard formId="order-status-form" />
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "status")} />
-                  <SelectInput label="Novo status" name="status" defaultValue={order.rawStatus} options={ORDER_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value }))} />
-                  <TextAreaInput label="Observação da alteração (opcional)" name="note" rows={4} />
+                  <FormSection title="Mudança de status" description="Altere o estado da ordem e registre observação se houver contexto importante." icon={<RefreshCw className="h-4 w-4 text-[var(--primary)]" />} compact>
+                    <SelectInput label="Novo status" name="status" defaultValue={order.rawStatus} options={ORDER_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value }))} required />
+                    <div className="mt-4"><TextAreaInput label="Observação da alteração" name="note" rows={4} description="Opcional, mas útil para explicar a transição para o time." /></div>
+                  </FormSection>
                   <ActionFooter>
-                    <Button type="submit">Salvar status</Button>
-                    <ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink>
+                    <div><p className="text-sm font-semibold text-[var(--text-primary)]">Mudança auditável</p><p className="field-hint">O sistema registra o status anterior e o novo status.</p></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar status</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
 
               {action === "note" ? (
-                <form action={addServiceOrderNoteAction} className="mt-5 space-y-4">
+                <form id="order-note-form" action={addServiceOrderNoteAction} className="mt-5 space-y-4">
+                  <FormStateGuard formId="order-note-form" />
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "note")} />
-                  <TextAreaInput label="Observação interna" name="note" rows={6} />
+                  <FormSection title="Nova observação" description="Use para registrar contexto operacional adicional sem alterar a essência da ordem." icon={<MessageSquare className="h-4 w-4 text-[var(--primary)]" />} compact>
+                    <TextAreaInput autoFocus label="Observação interna" name="note" rows={6} required description="Quanto mais objetiva, melhor para o próximo atendimento." />
+                  </FormSection>
                   <ActionFooter>
-                    <Button type="submit">Salvar observação</Button>
-                    <ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink>
+                    <div><p className="text-sm font-semibold text-[var(--text-primary)]">Nota interna</p><p className="field-hint">A observação entra na trilha da O.S. e ajuda no repasse entre times.</p></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar observação</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
 
               {action === "finish" ? (
-                <form action={finalizeServiceOrderAction} className="mt-5 space-y-4">
+                <form id="order-finish-form" action={finalizeServiceOrderAction} className="mt-5 space-y-4">
+                  <FormStateGuard formId="order-finish-form" />
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "finish")} />
                   <div className="alert-success">Ao finalizar, a observação de fechamento será gravada no histórico e nos detalhes da ordem.</div>
-                  <TextAreaInput label="Observação de fechamento" name="note" rows={6} />
+                  <FormSection title="Encerrar atendimento" description="Informe como a ordem foi concluída para deixar a trilha operacional completa." icon={<CheckCircle2 className="h-4 w-4 text-[var(--success)]" />} compact>
+                    <TextAreaInput autoFocus label="Observação de fechamento" name="note" rows={6} required />
+                  </FormSection>
                   <ActionFooter>
-                    <Button type="submit">Confirmar finalização</Button>
-                    <ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink>
+                    <div><p className="text-sm font-semibold text-[var(--text-primary)]">Fechamento auditável</p><p className="field-hint">A ordem passa a finalizada e pode ser reaberta depois, se necessário.</p></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Finalizando...">Confirmar finalização</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
 
               {action === "reopen" ? (
-                <form action={reopenServiceOrderAction} className="mt-5 space-y-4">
+                <form id="order-reopen-form" action={reopenServiceOrderAction} className="mt-5 space-y-4">
+                  <FormStateGuard formId="order-reopen-form" />
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "reopen")} />
                   <div className="alert-info">A O.S. será reaberta com status <span className="font-semibold">Aberta</span>.</div>
-                  <TextAreaInput label="Motivo da reabertura" name="reason" rows={6} />
+                  <FormSection title="Reabrir ordem" description="Explique por que a ordem voltou para a operação." icon={<RotateCcw className="h-4 w-4 text-[var(--info)]" />} compact>
+                    <TextAreaInput autoFocus label="Motivo da reabertura" name="reason" rows={6} required />
+                  </FormSection>
                   <ActionFooter>
-                    <Button type="submit">Confirmar reabertura</Button>
-                    <ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink>
+                    <div><p className="text-sm font-semibold text-[var(--text-primary)]">Reversão controlada</p><p className="field-hint">Finalização e cancelamento anteriores continuam preservados no histórico.</p></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Reabrindo...">Confirmar reabertura</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
 
               {action === "cancel" ? (
-                <form action={cancelServiceOrderAction} className="mt-5 space-y-4">
+                <form id="order-cancel-form" action={cancelServiceOrderAction} className="mt-5 space-y-4">
+                  <FormStateGuard formId="order-cancel-form" />
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "cancel")} />
                   <div className="alert-danger">Cancelamentos ficam auditáveis no histórico e preservam toda a trilha anterior da O.S.</div>
-                  <TextAreaInput label="Motivo do cancelamento" name="reason" rows={6} />
+                  <FormSection title="Cancelar ordem" description="Informe o motivo para a equipe entender por que a fila foi interrompida." icon={<Ban className="h-4 w-4 text-[var(--danger)]" />} compact>
+                    <TextAreaInput autoFocus label="Motivo do cancelamento" name="reason" rows={6} required />
+                  </FormSection>
                   <ActionFooter>
-                    <Button type="submit" variant="danger">Confirmar cancelamento</Button>
-                    <ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink>
+                    <div><p className="text-sm font-semibold text-[var(--text-primary)]">Cancelamento consciente</p><p className="field-hint">Use quando a ordem realmente não deve mais seguir em operação.</p></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton variant="danger" pendingLabel="Cancelando...">Confirmar cancelamento</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}

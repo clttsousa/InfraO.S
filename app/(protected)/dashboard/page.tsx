@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { AlertTriangle, CalendarClock, TimerReset } from "lucide-react";
 import { DashboardTable } from "@/components/dashboard/dashboard-table";
+import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { ButtonLink, EmptyState, FeedbackMessage, PageHeader, Surface } from "@/components/shared/ui";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
@@ -13,10 +15,28 @@ function TechnicianLoadBar({ openOrders, lateOrders, pendingOrders }: { openOrde
 
   return (
     <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
-      <div className="h-full bg-[var(--success)]" style={{ width: `${healthyPct}%` }} />
-      <div className="-mt-2.5 h-full bg-[var(--warning)]" style={{ width: `${pendingPct}%`, marginLeft: `${healthyPct}%` }} />
-      <div className="-mt-2.5 h-full bg-[var(--danger)]" style={{ width: `${latePct}%`, marginLeft: `${healthyPct + pendingPct}%` }} />
+      <div className="h-full bg-[var(--success)] transition-all duration-500" style={{ width: `${healthyPct}%` }} />
+      <div className="-mt-2.5 h-full bg-[var(--warning)] transition-all duration-500" style={{ width: `${pendingPct}%`, marginLeft: `${healthyPct}%` }} />
+      <div className="-mt-2.5 h-full bg-[var(--danger)] transition-all duration-500" style={{ width: `${latePct}%`, marginLeft: `${healthyPct + pendingPct}%` }} />
     </div>
+  );
+}
+
+function StatCard({ label, value, tone, href, caption }: { label: string; value: number; tone: string; href: string; caption: string }) {
+  const sparkHeights = [28, 48, 72].map((seed, index) => `${Math.max(22, Math.min(100, ((value || index + 1) / Math.max(value, 1)) * seed))}%`);
+
+  return (
+    <Link href={href} className="app-stat-card block animate-slideInUp" data-tone={tone}>
+      <div className="app-eyebrow text-[11px] font-medium">{label}</div>
+      <div className="app-stat-meta">
+        <AnimatedCounter value={value} className="app-number mt-3 text-[2rem] font-semibold leading-none" />
+        <span className="badge-base badge-primary">abrir fila</span>
+      </div>
+      <div className="app-stat-spark" aria-hidden="true">
+        {sparkHeights.map((height, index) => <span key={`${label}-${index}`} style={{ height }} />)}
+      </div>
+      <div className="app-stat-caption">{caption}</div>
+    </Link>
   );
 }
 
@@ -34,6 +54,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     loadError = "Não foi possível carregar o dashboard agora. Revise a conexão com o banco e tente novamente.";
   }
 
+  const statCards = data ? [
+    { label: "Abertas", value: data.stats.abertas, tone: "neutral", href: "/orders?status=ABERTA", caption: "fila geral em operação" },
+    { label: "Em acompanhamento", value: data.stats.acompanhamento, tone: "neutral", href: "/orders?status=EM_ACOMPANHAMENTO", caption: "ordens em andamento" },
+    { label: "Pendentes", value: data.stats.pendentes, tone: "warning", href: "/orders?status=PENDENTE", caption: "precisam de retorno" },
+    { label: "Atrasadas", value: data.stats.atrasadas, tone: "danger", href: "/orders?lateOnly=1", caption: "prioridade máxima" },
+    { label: "Finalizadas hoje", value: data.stats.finalizadasHoje, tone: "success", href: "/orders?status=FINALIZADA", caption: "fechamentos do dia" }
+  ] : [];
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <Breadcrumbs items={[{ label: "Dashboard" }]} showHome />
@@ -43,7 +71,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
       <PageHeader
         eyebrow="Acompanhamento operacional"
         title="Dashboard"
-        description="Leitura rápida das ordens que exigem atenção imediata, com foco em densidade de informação, contraste e operação diária."
+        description="Leitura rápida das ordens que exigem atenção, com cards clicáveis e visão objetiva da operação."
       />
 
       {!data ? (
@@ -51,27 +79,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
       ) : (
         <>
           <div className="dashboard-stats-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {[
-              ["Abertas", String(data.stats.abertas), "neutral"],
-              ["Em acompanhamento", String(data.stats.acompanhamento), "neutral"],
-              ["Pendentes", String(data.stats.pendentes), "warning"],
-              ["Atrasadas", String(data.stats.atrasadas), "danger"],
-              ["Finalizadas hoje", String(data.stats.finalizadasHoje), "success"]
-            ].map(([label, value, tone]) => (
-              <div key={label} className="app-stat-card" data-tone={tone}>
-                <div className="app-eyebrow text-[11px] font-medium">{label}</div>
-                <div className="app-number mt-3 text-[2rem] font-semibold leading-none">{value}</div>
-              </div>
+            {statCards.map((item) => (
+              <StatCard key={item.label} label={item.label} value={item.value} tone={item.tone} href={item.href} caption={item.caption} />
             ))}
           </div>
 
           <DashboardCharts data={data} />
-
-          <div className="flex flex-wrap gap-2">
-            <ButtonLink href="/orders?lateOnly=1" variant="secondary"><AlertTriangle className="h-4 w-4 text-[var(--danger)]" />Atrasadas</ButtonLink>
-            <ButtonLink href="/orders?dueToday=1" variant="secondary"><CalendarClock className="h-4 w-4 text-[var(--warning)]" />Vencendo hoje</ButtonLink>
-            <ButtonLink href="/orders?staleOnly=1" variant="secondary"><TimerReset className="h-4 w-4 text-[var(--text-tertiary)]" />Sem atualização</ButtonLink>
-          </div>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.32fr_0.88fr]">
             <div className="space-y-6">
@@ -81,8 +94,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
             </div>
 
             <div className="space-y-6">
-              <Surface className="p-5">
-                <h3 className="app-title text-lg font-semibold">Resumo por técnico</h3>
+              <Surface className="animate-slideInUp p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="app-title text-lg font-semibold">Resumo por técnico</h3>
+                  <span className="badge-base badge-primary">distribuição viva</span>
+                </div>
                 <div className="mt-4 space-y-2">
                   {data.technicianSummary.map((technician) => (
                     <div key={technician.id} className="border-b border-[var(--border)] py-2.5 last:border-b-0">
@@ -99,8 +115,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                 </div>
               </Surface>
 
-              <Surface className="p-5">
-                <h3 className="app-title text-lg font-semibold">Últimas movimentações</h3>
+              <Surface className="animate-slideInUp p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="app-title text-lg font-semibold">Últimas movimentações</h3>
+                  <span className="badge-base badge-neutral">timeline</span>
+                </div>
                 <div className="timeline mt-4 space-y-4">
                   {data.activities.length === 0 ? (
                     <EmptyState compact title="Sem movimentações" description="Quando houver novas ações nas O.S., elas aparecerão aqui." />

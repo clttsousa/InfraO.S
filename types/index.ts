@@ -29,6 +29,11 @@ export type InternalUserItem = {
   createdAt: string;
 };
 
+export type TechnicianAssignment = {
+  id: string;
+  name: string;
+};
+
 export type TechnicianItem = {
   id: string;
   name: string;
@@ -53,6 +58,10 @@ export type ServiceOrderItem = {
   technicianId?: string | null;
   internalOwnerId?: string | null;
   assignedTechnician: string;
+  supportTechnicianIds: string[];
+  supportTechnicians: TechnicianAssignment[];
+  supportTechnicianCount: number;
+  teamSummary: string;
   internalOwner: string;
   priority: OrderPriority;
   status: OrderStatus;
@@ -201,4 +210,49 @@ export type ReportsData = {
   byStatus: ReportBreakdownItem[];
   byPriority: ReportBreakdownItem[];
   byTechnician: ReportTechnicianProductivity[];
+};
+
+
+export type NotificationLevel = "danger" | "warning" | "info" | "success";
+
+export type NotificationItem = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  level: NotificationLevel;
+  when?: string;
+  category: "late" | "dueToday" | "stale" | "activity";
+};
+
+export type NotificationSummary = {
+  total: number;
+  counts: {
+    late: number;
+    dueToday: number;
+    stale: number;
+    recentActivities: number;
+  };
+  items: NotificationItem[];
+  activeAlertIds: {
+    late: string[];
+    dueToday: string[];
+    stale: string[];
+  };
+  checkedAt: string;
+};
+
+export type SavedOrderView = {
+  id: string;
+  name: string;
+  queryString: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SystemHealth = {
+  ok: boolean;
+  environment: { ok: boolean; message: string };
+  database: { ok: boolean; message: string };
+  checkedAt: string;
 };

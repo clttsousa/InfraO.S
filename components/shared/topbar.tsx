@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SessionUser } from "@/lib/auth";
 import { Button, ButtonLink } from "@/components/shared/ui";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import { LogoutButton } from "@/components/shared/logout-button";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { CommandPalette, useCommandPalette } from "@/components/shared/command-palette";
-import { BrandLogo } from "@/components/shared/brand-logo";
 import { useSystemPreferences } from "@/components/providers/system-preferences-provider";
+import type { NotificationSummary } from "@/types";
 
 const titleByPathname: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -17,12 +18,13 @@ const titleByPathname: Record<string, string> = {
   "/orders/new": "Nova O.S.",
   "/technicians": "Técnicos",
   "/users": "Usuários",
+  "/notifications": "Notificações",
   "/reports": "Relatórios",
   "/settings": "Configurações",
   "/profile": "Meu acesso"
 };
 
-export function Topbar({ pathname, user, onMenuClick }: { pathname: string; user: SessionUser; onMenuClick?: () => void }) {
+export function Topbar({ pathname, user, notifications, onMenuClick }: { pathname: string; user: SessionUser; notifications: NotificationSummary; onMenuClick?: () => void }) {
   const { isOpen, setIsOpen } = useCommandPalette();
   const { preferences } = useSystemPreferences();
   const router = useRouter();
@@ -31,6 +33,7 @@ export function Topbar({ pathname, user, onMenuClick }: { pathname: string; user
     { id: "dashboard", label: "Dashboard", description: "Ir para o resumo operacional", icon: <LayoutDashboard className="h-4 w-4" />, href: "/dashboard", shortcut: "⌘D" },
     { id: "new-order", label: "Nova O.S.", description: "Criar nova ordem de serviço", icon: <Plus className="h-4 w-4" />, href: "/orders/new", shortcut: "⌘N" },
     { id: "orders", label: "Ordens", description: "Abrir a listagem completa de ordens", icon: <FileText className="h-4 w-4" />, href: "/orders", shortcut: "⌘O" },
+    { id: "notifications", label: "Notificações", description: "Abrir a central de notificações operacionais", icon: <Bell className="h-4 w-4" />, href: "/notifications" },
     { id: "users", label: "Usuários", description: "Gerenciar equipe interna", icon: <Users className="h-4 w-4" />, href: "/users" },
     { id: "settings", label: "Configurações", description: "Preferências e área administrativa", icon: <Settings className="h-4 w-4" />, href: "/settings" },
     { id: "alerts", label: "Alertas", description: "Ver ordens críticas ou atrasadas", icon: <Bell className="h-4 w-4" />, action: () => router.push("/orders?lateOnly=1") }
@@ -45,11 +48,7 @@ export function Topbar({ pathname, user, onMenuClick }: { pathname: string; user
               <Menu className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-              <div className="topbar-brand-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5">
-                <BrandLogo variant="mark" size="sm" className="shrink-0" />
-                <span className="app-eyebrow text-[10px] font-medium">Painel interno</span>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <h1 className="app-title truncate text-[1.85rem] font-semibold leading-tight md:text-[2.15rem]">{titleByPathname[pathname] ?? "InfraOS"}</h1>
                 {user.role === "ADMIN" ? <span className="badge-base badge-primary hidden sm:inline-flex"><Shield className="h-3.5 w-3.5" />Admin</span> : null}
               </div>
@@ -63,7 +62,7 @@ export function Topbar({ pathname, user, onMenuClick }: { pathname: string; user
                 <span className="app-number rounded-md border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--text-tertiary)]">⌘ / Ctrl + K</span>
               </button>
             ) : null}
-            <ButtonLink href="/orders?lateOnly=1" variant="secondary" className="hidden sm:inline-flex"><Bell className="h-4 w-4" />Alertas</ButtonLink>
+            <NotificationBell summary={notifications} />
             <ThemeToggle />
             <Link href="/orders/new" className="flex-1 sm:flex-none"><Button className="w-full sm:w-auto">Nova O.S.</Button></Link>
             <LogoutButton userName={user.name} />

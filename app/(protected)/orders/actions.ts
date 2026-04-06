@@ -5,6 +5,7 @@ import type { PoolClient } from "pg";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { toDateTimeLocalValue } from "@/lib/format";
 import { cleanText, ensureDateTime, ensureEnum, ensureUuid, normalizeUuid } from "@/lib/validation";
 import type { OrderPriorityDb, OrderStatusDb } from "@/types";
 
@@ -21,8 +22,18 @@ function appendMessage(url: string, key: "success" | "error", message: string) {
   return `${stripActionParam(url)}${joiner}${key}=${encodeMessage(message)}`;
 }
 
+function normalizeSupportTechnicianIds(formData: FormData) {
+  const values = formData
+    .getAll("supportTechnicianIds")
+    .map((value) => normalizeUuid(cleanText(value)))
+    .filter((value): value is string => Boolean(value));
+
+  return [...new Set(values)];
+}
+
 function normalizeOrderPayload(formData: FormData) {
   const deadlineAt = cleanText(formData.get("deadlineAt"));
+  const technicianId = normalizeUuid(cleanText(formData.get("technicianId")));
   return {
     orderNumber: cleanText(formData.get("orderNumber")),
     openedAt: cleanText(formData.get("openedAt")),
@@ -32,7 +43,8 @@ function normalizeOrderPayload(formData: FormData) {
     clientName: cleanText(formData.get("clientName")),
     addressText: cleanText(formData.get("addressText")),
     locationLink: cleanText(formData.get("locationLink")),
-    technicianId: normalizeUuid(cleanText(formData.get("technicianId"))),
+    technicianId,
+    supportTechnicianIds: normalizeSupportTechnicianIds(formData).filter((id) => id !== technicianId),
     internalOwnerId: normalizeUuid(cleanText(formData.get("internalOwnerId"))),
     priority: (cleanText(formData.get("priority")) ?? "MEDIA") as OrderPriorityDb,
     deadlineAt: deadlineAt ? ensureDateTime(deadlineAt, "Prazo") : null,
@@ -79,6 +91,32 @@ async function getTechnicianNames(client: PoolClient, oldId: string | null, newI
   };
 }
 
+async function getTechnicianNameMap(client: PoolClient, technicianIds: string[]) {
+  if (!technicianIds.length) return new Map<string, string>();
+  const result = await client.query<{ id: string; full_name: string }>(`select id, full_name from technicians where id = any($1::uuid[])`, [technicianIds]);
+  return new Map(result.rows.map((row) => [row.id, row.full_name]));
+}
+
+async function getSupportTechnicianIds(client: PoolClient, serviceOrderId: string) {
+  const result = await client.query<{ technician_id: string }>(
+    `select technician_id::text as technician_id from service_order_technicians where service_order_id = $1::uuid and role = 'SUPPORT' order by created_at asc`,
+    [serviceOrderId]
+  );
+  return result.rows.map((row) => row.technician_id);
+}
+
+async function syncSupportTechnicians(client: PoolClient, serviceOrderId: string, primaryTechnicianId: string | null, supportTechnicianIds: string[]) {
+  const filteredIds = [...new Set(supportTechnicianIds)].filter((id) => id !== primaryTechnicianId);
+  await client.query(`delete from service_order_technicians where service_order_id = $1::uuid and role = 'SUPPORT'`, [serviceOrderId]);
+  if (filteredIds.length) {
+    await client.query(
+      `insert into service_order_technicians (service_order_id, technician_id, role) select $1::uuid, value::uuid, 'SUPPORT' from unnest($2::text[]) as value`,
+      [serviceOrderId, filteredIds]
+    );
+  }
+  return filteredIds;
+}
+
 function isRecoverableStatus(value: string): value is Extract<OrderStatusDb, "ABERTA" | "ENCAMINHADA" | "EM_ACOMPANHAMENTO" | "PENDENTE"> {
   return ["ABERTA", "ENCAMINHADA", "EM_ACOMPANHAMENTO", "PENDENTE"].includes(value);
 }
@@ -87,6 +125,10 @@ function revalidateOperationalViews() {
   revalidatePath("/orders");
   revalidateTag("dashboard", "max");
   revalidateTag("reports", "max");
+}
+
+function isMissingSavedViewsTableError(error: unknown) {
+  return error instanceof Error && /saved_order_views|does not exist|relation .* does not exist/i.test(error.message);
 }
 
 function ensureLifecycleTransition(currentStatus: OrderStatusDb, action: "status" | "finish" | "reopen" | "cancel") {
@@ -126,8 +168,8 @@ export async function createServiceOrderAction(formData: FormData) {
           created_by_user_id, updated_by_user_id, last_status_changed_at, last_status_changed_by_user_id
         )
         values (
-          $1, nullif($2, '')::timestamptz, nullif($3, ''), $4, nullif($5, ''), nullif($6, ''), nullif($7, ''),
-          nullif($8, ''), $9::uuid, $10::uuid, $11, 'ABERTA', nullif($12, '')::timestamptz, nullif($13, ''),
+          $1, (nullif($2, '')::timestamp at time zone 'America/Sao_Paulo'), nullif($3, ''), $4, nullif($5, ''), nullif($6, ''), nullif($7, ''),
+          nullif($8, ''), $9::uuid, $10::uuid, $11, 'ABERTA', (nullif($12, '')::timestamp at time zone 'America/Sao_Paulo'), nullif($13, ''),
           $14::uuid, $14::uuid, now(), $14::uuid
         )
         returning id
@@ -153,12 +195,21 @@ export async function createServiceOrderAction(formData: FormData) {
     const orderId = inserted.rows[0]?.id;
     if (!orderId) throw new Error("Falha ao criar a ordem.");
 
+    const supportTechnicianIds = await syncSupportTechnicians(client, orderId, payload.technicianId, payload.supportTechnicianIds);
+
     await insertLog(client, orderId, session.id, "Criou a O.S.", payload.rawInput ? "Cadastro realizado com apoio do parser por texto colado." : "Cadastro manual da O.S.", null, {
       orderNumber: payload.orderNumber,
       internalOwnerId: payload.internalOwnerId,
       technicianId: payload.technicianId,
+      supportTechnicianIds,
       priority: payload.priority
     });
+
+    if (supportTechnicianIds.length) {
+      const supportNameMap = await getTechnicianNameMap(client, supportTechnicianIds);
+      const supportNames = supportTechnicianIds.map((id) => supportNameMap.get(id) ?? id);
+      await insertLog(client, orderId, session.id, "Definiu técnicos de apoio.", supportNames.join(", "), null, { supportTechnicianIds });
+    }
 
     await client.query("commit");
     revalidateOperationalViews();
@@ -196,27 +247,39 @@ export async function updateServiceOrderAction(formData: FormData) {
 
     const currentRow = current.rows[0];
     if (!currentRow) throw new Error("Ordem não encontrada.");
+    const currentSupportTechnicianIds = await getSupportTechnicianIds(client, id);
 
     await client.query(
       `
         update service_orders
-        set order_number = $2, opened_at = nullif($3, '')::timestamptz, opened_by = nullif($4, ''), opening_description = $5,
+        set order_number = $2, opened_at = (nullif($3, '')::timestamp at time zone 'America/Sao_Paulo'), opened_by = nullif($4, ''), opening_description = $5,
             client_code = nullif($6, ''), client_name = nullif($7, ''), address_text = nullif($8, ''), location_link = nullif($9, ''),
-            technician_id = $10::uuid, internal_owner_id = $11::uuid, priority = $12, deadline_at = nullif($13, '')::timestamptz,
+            technician_id = $10::uuid, internal_owner_id = $11::uuid, priority = $12, deadline_at = (nullif($13, '')::timestamp at time zone 'America/Sao_Paulo'),
             internal_note = nullif($14, ''), updated_by_user_id = $15::uuid, updated_at = now()
         where id = $1
       `,
       [id, payload.orderNumber, payload.openedAt, payload.openedBy, payload.openingDescription, payload.clientCode, payload.clientName, payload.addressText, payload.locationLink, payload.technicianId, payload.internalOwnerId, ensureEnum(payload.priority, ["BAIXA", "MEDIA", "ALTA", "URGENTE"] as const, "Prioridade"), payload.deadlineAt, payload.internalNote, session.id]
     );
 
-    await insertLog(client, id, session.id, "Editou a O.S.", "Dados principais atualizados.", currentRow, payload);
+    const supportTechnicianIds = await syncSupportTechnicians(client, id, payload.technicianId, payload.supportTechnicianIds);
+
+    await insertLog(client, id, session.id, "Editou a O.S.", "Dados principais atualizados.", { ...currentRow, supportTechnicianIds: currentSupportTechnicianIds }, { ...payload, supportTechnicianIds });
 
     if ((currentRow.technician_id ?? null) !== (payload.technicianId ?? null)) {
       const names = await getTechnicianNames(client, currentRow.technician_id, payload.technicianId);
       await insertLog(client, id, session.id, "Alterou o técnico responsável.", `${names.oldName ?? "Não definido"} → ${names.newName ?? "Não definido"}`, { technicianId: currentRow.technician_id }, { technicianId: payload.technicianId });
     }
 
-    const currentDeadlineValue = currentRow.deadline_at ? new Date(currentRow.deadline_at).toISOString().slice(0, 16) : null;
+    const currentSupportKey = currentSupportTechnicianIds.slice().sort().join(",");
+    const newSupportKey = supportTechnicianIds.slice().sort().join(",");
+    if (currentSupportKey !== newSupportKey) {
+      const supportNameMap = await getTechnicianNameMap(client, [...currentSupportTechnicianIds, ...supportTechnicianIds]);
+      const oldNames = currentSupportTechnicianIds.map((supportId) => supportNameMap.get(supportId) ?? supportId);
+      const newNames = supportTechnicianIds.map((supportId) => supportNameMap.get(supportId) ?? supportId);
+      await insertLog(client, id, session.id, "Atualizou os técnicos de apoio.", `${oldNames.length ? oldNames.join(", ") : "Sem apoio"} → ${newNames.length ? newNames.join(", ") : "Sem apoio"}`, { supportTechnicianIds: currentSupportTechnicianIds }, { supportTechnicianIds });
+    }
+
+    const currentDeadlineValue = currentRow.deadline_at ? toDateTimeLocalValue(currentRow.deadline_at) : null;
     if ((currentDeadlineValue ?? null) != (payload.deadlineAt ?? null)) {
       await insertLog(client, id, session.id, "Alterou o prazo da O.S.", `Prazo anterior: ${currentRow.deadline_at ?? "sem prazo"}. Novo prazo: ${payload.deadlineAt ?? "sem prazo"}.`, { deadlineAt: currentRow.deadline_at }, { deadlineAt: payload.deadlineAt });
     }
@@ -371,4 +434,54 @@ export async function addServiceOrderNoteAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível salvar a observação.");
   } finally { client.release(); }
   redirect(redirectTarget);
+}
+
+
+export async function saveOrderViewAction(formData: FormData) {
+  const session = await requireSession();
+  const name = String(formData.get("name") ?? "").trim();
+  const queryString = String(formData.get("queryString") ?? "").trim();
+
+  if (!name) {
+    redirect(`/orders?error=${encodeMessage("Informe um nome para salvar a visão atual.")}`);
+  }
+
+  try {
+    await db.query(
+      `
+        insert into saved_order_views (internal_user_id, name, query_string)
+        values ($1::uuid, $2, $3)
+        on conflict (internal_user_id, name) do update
+        set query_string = excluded.query_string, updated_at = now()
+      `,
+      [session.id, name, queryString]
+    );
+    revalidatePath("/orders");
+    redirect(`/orders?${queryString}${queryString ? "&" : ""}success=${encodeMessage("Visão salva com sucesso.")}`);
+  } catch (error) {
+    const message = isMissingSavedViewsTableError(error)
+      ? "Aplique a migration database/11_saved_order_views.sql para habilitar filtros salvos."
+      : error instanceof Error
+        ? error.message
+        : "Não foi possível salvar a visão atual.";
+    redirect(`/orders?${queryString}${queryString ? "&" : ""}error=${encodeMessage(message)}`);
+  }
+}
+
+export async function deleteOrderViewAction(formData: FormData) {
+  const session = await requireSession();
+  const id = String(formData.get("id") ?? "").trim();
+
+  if (!id) {
+    redirect(`/orders?error=${encodeMessage("Filtro salvo não informado.")}`);
+  }
+
+  try {
+    await db.query(`delete from saved_order_views where id = $1::uuid and internal_user_id = $2::uuid`, [id, session.id]);
+    revalidatePath("/orders");
+    redirect(`/orders?success=${encodeMessage("Filtro salvo removido.")}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Não foi possível remover o filtro salvo.";
+    redirect(`/orders?error=${encodeMessage(message)}`);
+  }
 }

@@ -10,7 +10,9 @@ export function createOrdersWorkbook(orders: ServiceOrderItem[]) {
     "Código do cliente": order.clientCode ?? "",
     Endereço: order.address ?? "",
     Localização: order.locationLink ?? "",
-    Técnico: order.assignedTechnician,
+    "Técnico principal": order.assignedTechnician,
+    "Técnicos de apoio": order.supportTechnicians.map((item) => item.name).join(", ") || "",
+    "Equipe resumida": order.teamSummary,
     "Responsável interno": order.internalOwner,
     Prioridade: order.priority,
     Status: order.status,
@@ -45,7 +47,7 @@ export function createReportsWorkbook(report: ReportsData) {
   const filterRows = [
     { Filtro: "De", Valor: report.filters.from || "Todos" },
     { Filtro: "Até", Valor: report.filters.to || "Todos" },
-    { Filtro: "Técnico", Valor: report.filters.technicianId || "Todos" },
+    { Filtro: "Técnico envolvido", Valor: report.filters.technicianId || "Todos" },
     { Filtro: "Status", Valor: report.filters.status ? mapReportStatusLabel(report.filters.status) : "Todos" },
     { Filtro: "Prioridade", Valor: report.filters.priority ? mapReportStatusLabel(report.filters.priority) : "Todas" }
   ];

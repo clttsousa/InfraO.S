@@ -1,5 +1,7 @@
 import type { OrderPriority, OrderPriorityDb, OrderStatus, OrderStatusDb } from "@/types";
 
+export const APP_TIME_ZONE = "America/Sao_Paulo";
+
 export const statusLabelByDb: Record<OrderStatusDb, OrderStatus> = {
   ABERTA: "Aberta",
   ENCAMINHADA: "Encaminhada",
@@ -16,6 +18,27 @@ export const priorityLabelByDb: Record<OrderPriorityDb, OrderPriority> = {
   URGENTE: "Urgente"
 };
 
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+  timeZone: APP_TIME_ZONE
+});
+
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeZone: APP_TIME_ZONE
+});
+
+const localDateTimePartsFormatter = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: APP_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false
+});
+
 export function formatStatus(dbValue: OrderStatusDb, late = false): OrderStatus {
   if (late) return "Atrasada";
   return statusLabelByDb[dbValue] ?? "Aberta";
@@ -27,25 +50,23 @@ export function formatPriority(dbValue: OrderPriorityDb): OrderPriority {
 
 export function formatDateTime(value?: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateTimeFormatter.format(date);
 }
 
 export function formatDate(value?: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short"
-  }).format(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateFormatter.format(date);
 }
 
 export function toDateTimeLocalValue(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60_000);
-  return local.toISOString().slice(0, 16);
+  if (Number.isNaN(date.getTime())) return "";
+  return localDateTimePartsFormatter.format(date).replace(" ", "T");
 }
 
 export function parseBrazilianDateTimeToIso(value?: string | null) {
