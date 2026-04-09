@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Command, X } from "lucide-react";
+import { Search, Command, X, Hash } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export interface CommandItem {
@@ -23,17 +23,33 @@ export function CommandPalette({ commands, isOpen: controlledIsOpen, onOpenChang
 
   const open = controlledIsOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
+  const normalizedQuery = query.trim();
+  const numericOrderQuery = normalizedQuery.replace(/\D/g, "");
 
-  const filtered = useMemo(
-    () =>
-      commands.filter(
-        (cmd) =>
-          cmd.label.toLowerCase().includes(query.toLowerCase()) ||
-          cmd.description?.toLowerCase().includes(query.toLowerCase()) ||
-          cmd.category?.toLowerCase().includes(query.toLowerCase())
-      ),
-    [commands, query]
-  );
+  const filtered = useMemo(() => {
+    const base = commands.filter(
+      (cmd) =>
+        cmd.label.toLowerCase().includes(normalizedQuery.toLowerCase()) ||
+        cmd.description?.toLowerCase().includes(normalizedQuery.toLowerCase()) ||
+        cmd.category?.toLowerCase().includes(normalizedQuery.toLowerCase())
+    );
+
+    if (numericOrderQuery.length >= 6) {
+      return [
+        {
+          id: `direct-order-${numericOrderQuery}`,
+          label: `Abrir O.S. ${numericOrderQuery}`,
+          description: "Busca direta pelo número e abre a primeira ocorrência encontrada.",
+          icon: <Hash className="h-4 w-4" />,
+          href: `/orders?q=${encodeURIComponent(numericOrderQuery)}`,
+          shortcut: "↵"
+        },
+        ...base
+      ];
+    }
+
+    return base;
+  }, [commands, normalizedQuery, numericOrderQuery]);
 
   useEffect(() => {
     if (!open) {
@@ -100,7 +116,7 @@ export function CommandPalette({ commands, isOpen: controlledIsOpen, onOpenChang
             <input
               autoFocus
               type="text"
-              placeholder="Buscar páginas, ações e atalhos..."
+              placeholder="Buscar páginas, ações e número da O.S...."
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -119,7 +135,7 @@ export function CommandPalette({ commands, isOpen: controlledIsOpen, onOpenChang
               <div className="px-4 py-8 text-center text-sm text-[var(--text-secondary)]">Nenhum comando encontrado.</div>
             ) : (
               filtered.map((cmd, index) => {
-                const active = index === selectedIndex;
+                const active = index == selectedIndex;
                 return (
                   <button
                     key={cmd.id}

@@ -34,6 +34,19 @@ export type TechnicianAssignment = {
   name: string;
 };
 
+export type TechnicianDirectoryItem = {
+  id: string;
+  name: string;
+  active: boolean;
+};
+
+export type InternalUserDirectoryItem = {
+  id: string;
+  name: string;
+  role: UserRole;
+  active: boolean;
+};
+
 export type TechnicianItem = {
   id: string;
   name: string;
@@ -173,6 +186,13 @@ export type ParsedServiceOrderInput = {
   locationLink?: string;
 };
 
+export type ParserFieldFeedback = {
+  key: keyof ParsedServiceOrderInput;
+  label: string;
+  value?: string;
+  status: "recognized" | "missing";
+};
+
 export type ReportFilters = {
   from?: string;
   to?: string;
@@ -223,6 +243,7 @@ export type NotificationItem = {
   level: NotificationLevel;
   when?: string;
   category: "late" | "dueToday" | "stale" | "activity";
+  actionLabel?: string;
 };
 
 export type NotificationSummary = {

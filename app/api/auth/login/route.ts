@@ -13,11 +13,20 @@ const fallbackBuckets = new Map<string, Bucket>();
 function getClientKey(request: NextRequest, email: string) {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const fallback = request.headers.get("x-real-ip")?.trim() || "local";
-  return `${forwarded || fallback}:${email}`;
+  return `${forwarded || fallback}:${email.toLowerCase()}`;
 }
 
 function isMissingTableError(error: unknown) {
   return error instanceof Error && /auth_login_attempts|does not exist|relation .* does not exist/i.test(error.message);
+}
+
+function logRateLimitFallback(reason: string, key: string, error?: unknown) {
+  const bucketFingerprint = key.slice(0, 12);
+  console.warn("[infraos][auth-rate-limit] fallback em memória ativado", {
+    reason,
+    bucketFingerprint,
+    error: error instanceof Error ? error.message : undefined
+  });
 }
 
 function checkRateLimitFallback(key: string) {
@@ -112,8 +121,12 @@ async function checkRateLimit(key: string) {
   try {
     return await checkRateLimitDb(key);
   } catch (error) {
-    if (isMissingTableError(error)) return checkRateLimitFallback(key);
-    throw error;
+    if (isMissingTableError(error)) {
+      logRateLimitFallback("missing-table", key, error);
+      return checkRateLimitFallback(key);
+    }
+    logRateLimitFallback("db-read-error", key, error);
+    return checkRateLimitFallback(key);
   }
 }
 
@@ -122,10 +135,12 @@ async function registerAttempt(key: string, success: boolean) {
     await registerAttemptDb(key, success);
   } catch (error) {
     if (isMissingTableError(error)) {
+      logRateLimitFallback("missing-table", key, error);
       registerAttemptFallback(key, success);
       return;
     }
-    throw error;
+    logRateLimitFallback("db-write-error", key, error);
+    registerAttemptFallback(key, success);
   }
 }
 

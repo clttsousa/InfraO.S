@@ -858,3 +858,14 @@ html[data-emphasize-alerts="1"] .alert-emphasis-stale { box-shadow: inset 3px 0 
   .form-actions-bar > :last-child { width: 100%; }
   .form-actions-bar > :last-child > * { flex: 1 1 auto; }
 }
+
+/* ===== V6.2 UX / ACCESSIBILITY ===== */
+.field-autofilled { border-color: color-mix(in srgb, var(--success) 28%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--success-soft) 36%, var(--surface)) 0%, var(--surface) 100%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--success) 10%, transparent); }
+.parser-feedback-panel { box-shadow: var(--shadow-sm); }
+.parser-chip { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.42rem 0.72rem; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); }
+.parser-chip-success { background: color-mix(in srgb, var(--success-soft) 60%, var(--surface)); color: var(--success); border-color: color-mix(in srgb, var(--success) 18%, var(--border)); }
+.parser-chip-muted { background: color-mix(in srgb, var(--surface-muted) 75%, var(--surface)); color: var(--text-secondary); }
+.topbar-search-form { min-height: 2.75rem; }
+@media (max-width: 1279px) {
+  .topbar-search-form { width: 100%; }
+}

@@ -8,7 +8,9 @@ type EnvConfig = {
   dbConnectionTimeoutMs: number;
 };
 
-let cachedEnv: EnvConfig | null = null;
+declare global {
+  var __infraosEnvCache: EnvConfig | undefined;
+}
 
 function parsePositiveInt(value: string | undefined, fallback: number) {
   const parsed = Number(value ?? fallback);
@@ -18,57 +20,33 @@ function parsePositiveInt(value: string | undefined, fallback: number) {
 function normalizeDatabaseUrl(value: string) {
   const normalized = value.trim();
   const parsed = new URL(normalized);
-
-  if (!["postgres:", "postgresql:"].includes(parsed.protocol)) {
-    throw new Error("DATABASE_URL deve começar com postgresql://");
-  }
-
-  if (!parsed.hostname || parsed.hostname === "base") {
-    throw new Error("DATABASE_URL inválida: host do Neon não foi identificado.");
-  }
-
-  if (!parsed.pathname || parsed.pathname === "/") {
-    throw new Error("DATABASE_URL inválida: nome do banco não foi informado.");
-  }
-
-  if (!parsed.searchParams.get("sslmode")) {
-    parsed.searchParams.set("sslmode", "require");
-  }
-
-  if (!parsed.searchParams.get("channel_binding")) {
-    parsed.searchParams.set("channel_binding", "require");
-  }
-
-  if (!parsed.searchParams.get("uselibpqcompat")) {
-    parsed.searchParams.set("uselibpqcompat", "true");
-  }
-
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol)) throw new Error("DATABASE_URL deve começar com postgresql://");
+  if (!parsed.hostname || parsed.hostname === "base") throw new Error("DATABASE_URL inválida: host do Neon não foi identificado.");
+  if (!parsed.pathname || parsed.pathname === "/") throw new Error("DATABASE_URL inválida: nome do banco não foi informado.");
+  if (!parsed.searchParams.get("sslmode")) parsed.searchParams.set("sslmode", "require");
+  if (!parsed.searchParams.get("channel_binding")) parsed.searchParams.set("channel_binding", "require");
+  if (!parsed.searchParams.get("uselibpqcompat")) parsed.searchParams.set("uselibpqcompat", "true");
   return parsed.toString();
 }
 
-export function getEnv() {
-  if (cachedEnv) return cachedEnv;
-
+function buildEnvConfig(): EnvConfig {
   const databaseRaw = process.env.DATABASE_URL;
   const authSecret = process.env.AUTH_SECRET?.trim();
-
-  if (!databaseRaw) {
-    throw new Error("DATABASE_URL não configurada. Copie a connection string completa do Neon para o .env.local.");
-  }
-
-  if (!authSecret) {
-    throw new Error("AUTH_SECRET não configurada. Defina uma chave longa e segura no .env.local.");
-  }
-
-  cachedEnv = {
+  if (!databaseRaw) throw new Error("DATABASE_URL não configurada. Copie a connection string completa do Neon para o .env.local.");
+  if (!authSecret) throw new Error("AUTH_SECRET não configurada. Defina uma chave longa e segura no .env.local.");
+  return {
     databaseUrl: normalizeDatabaseUrl(databaseRaw),
     authSecret,
     dbPoolMax: parsePositiveInt(process.env.DB_POOL_MAX, 10),
     dbIdleTimeoutMs: parsePositiveInt(process.env.DB_IDLE_TIMEOUT_MS, 30_000),
     dbConnectionTimeoutMs: parsePositiveInt(process.env.DB_CONNECTION_TIMEOUT_MS, 10_000)
   };
+}
 
-  return cachedEnv;
+export function getEnv() {
+  if (process.env.NODE_ENV !== "production") return buildEnvConfig();
+  if (!global.__infraosEnvCache) global.__infraosEnvCache = buildEnvConfig();
+  return global.__infraosEnvCache;
 }
 
 export function getPublicRuntimeChecks() {

@@ -6,6 +6,7 @@ import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { FeedbackMessage, FormSection, PageHeader, Surface, TextInput } from "@/components/shared/ui";
 import { requireSession } from "@/lib/session";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 export default async function ProfilePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await requireSession();
@@ -16,8 +17,8 @@ export default async function ProfilePage({ searchParams }: { searchParams?: Pro
   return (
     <div className="space-y-6 p-4 md:p-6">
       <Breadcrumbs items={[{ label: "Meu acesso" }]} showHome />
-      {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-      {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+      {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+      {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
       <PageHeader eyebrow="Conta" title="Meu acesso" description="Altere sua senha e encerre a sessão atual com segurança." actions={<Link href="/dashboard" className="btn-base btn-secondary btn-md">Voltar ao dashboard</Link>} />
       <Surface className="max-w-3xl p-5">
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3 text-sm text-[var(--text-secondary)]">

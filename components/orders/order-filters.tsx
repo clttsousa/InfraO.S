@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDownWideNarrow, CalendarClock, ChevronsUpDown, Search, SlidersHorizontal, TimerReset } from "lucide-react";
 import { Button } from "@/components/shared/ui";
-import type { OrderFilters as OrderFiltersType, TechnicianItem } from "@/types";
+import type { OrderFilters as OrderFiltersType, TechnicianDirectoryItem } from "@/types";
 
 function isChecked(value?: boolean) {
   return value ? true : false;
@@ -25,7 +25,7 @@ function hasAdvancedFilters(filters: OrderFiltersType) {
   );
 }
 
-export function OrderFilters({ technicians, filters }: { technicians: TechnicianItem[]; filters: OrderFiltersType }) {
+export function OrderFilters({ technicians, filters, exportActionHref }: { technicians: TechnicianDirectoryItem[]; filters: OrderFiltersType; exportActionHref?: string }) {
   const [showAdvanced, setShowAdvanced] = useState(hasAdvancedFilters(filters));
 
   const activeCount = useMemo(() => (
@@ -40,7 +40,7 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
   ];
 
   return (
-    <form method="get" className="app-surface animate-slideInUp space-y-4 rounded-[var(--radius-panel)] p-4">
+    <form method="get" action="/orders" className="app-surface animate-slideInUp space-y-4 rounded-[var(--radius-panel)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]"><SlidersHorizontal className="h-4 w-4 text-[var(--primary)]" />Filtros</div>
@@ -141,6 +141,7 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
             </label>
             <input type="hidden" name="page" value="1" />
             <div className="flex flex-wrap items-end gap-2 md:justify-end">
+              {exportActionHref ? (<Button type="submit" variant="secondary" formAction={exportActionHref} title="Exporta usando exatamente os campos atuais do formulário">Exportar Excel</Button>) : null}
               <Button type="submit">Aplicar</Button>
               <a href="/orders" className="btn-base btn-secondary btn-md">Limpar</a>
             </div>

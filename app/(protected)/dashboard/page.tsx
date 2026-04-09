@@ -6,6 +6,7 @@ import { ButtonLink, EmptyState, FeedbackMessage, PageHeader, Surface } from "@/
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { getDashboardData } from "@/lib/data";
+import { getCompactSparkline } from "@/lib/sparkline";
 
 function TechnicianLoadBar({ openOrders, lateOrders, pendingOrders }: { openOrders: number; lateOrders: number; pendingOrders: number }) {
   const total = Math.max(openOrders, 1);
@@ -23,8 +24,7 @@ function TechnicianLoadBar({ openOrders, lateOrders, pendingOrders }: { openOrde
 }
 
 function StatCard({ label, value, tone, href, caption }: { label: string; value: number; tone: string; href: string; caption: string }) {
-  const sparkHeights = [28, 48, 72].map((seed, index) => `${Math.max(22, Math.min(100, ((value || index + 1) / Math.max(value, 1)) * seed))}%`);
-
+  const spark = getCompactSparkline(value);
   return (
     <Link href={href} className="app-stat-card block animate-slideInUp" data-tone={tone}>
       <div className="app-eyebrow text-[11px] font-medium">{label}</div>
@@ -32,10 +32,8 @@ function StatCard({ label, value, tone, href, caption }: { label: string; value:
         <AnimatedCounter value={value} className="app-number mt-3 text-[2rem] font-semibold leading-none" />
         <span className="badge-base badge-primary">abrir fila</span>
       </div>
-      <div className="app-stat-spark" aria-hidden="true">
-        {sparkHeights.map((height, index) => <span key={`${label}-${index}`} style={{ height }} />)}
-      </div>
-      <div className="app-stat-caption">{caption}</div>
+      {spark.showBars ? (<div className="app-stat-spark" aria-hidden="true">{spark.heights.map((height, index) => <span key={`${label}-${index}`} style={{ height }} />)}</div>) : (<div className="mt-3 text-xs text-[var(--text-tertiary)]">Amostra pequena: leitura simplificada.</div>)}
+      <div className="app-stat-caption">{spark.reliability === "low" ? `${caption} · base reduzida` : caption}</div>
     </Link>
   );
 }

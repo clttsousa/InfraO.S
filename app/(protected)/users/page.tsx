@@ -8,6 +8,7 @@ import { UserToggleForm } from "@/components/users/user-toggle-form";
 import { Button, ButtonLink, EmptyState, FeedbackMessage, FormSection, PageHeader, SelectInput, Surface, TextInput } from "@/components/shared/ui";
 import { getInternalUserById, getInternalUsers } from "@/lib/data";
 import { requireAdmin } from "@/lib/session";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 function normalizeText(value: string) { return value.trim().toLowerCase(); }
 
@@ -16,8 +17,8 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
   const params = (await searchParams) ?? {};
   const editId = typeof params.edit === "string" ? params.edit : "";
   const resetId = typeof params.reset === "string" ? params.reset : "";
-  const success = typeof params.success === "string" ? decodeURIComponent(params.success) : "";
-  const error = typeof params.error === "string" ? decodeURIComponent(params.error) : "";
+  const success = typeof params.success === "string" ? decodeSearchParamMessage(params.success) : "";
+  const error = typeof params.error === "string" ? decodeSearchParamMessage(params.error) : "";
   const q = typeof params.q === "string" ? params.q : "";
   const statusFilter = typeof params.status === "string" ? params.status : "all";
   const roleFilter = typeof params.role === "string" ? params.role : "all";

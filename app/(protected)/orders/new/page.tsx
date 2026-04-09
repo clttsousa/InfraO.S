@@ -6,12 +6,17 @@ import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { Button, ButtonLink, FeedbackMessage, FormHelper, FormHint, FormSection, SelectInput, Surface, TextAreaInput, TextInput } from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS } from "@/lib/constants";
-import { getInternalUsers, getTechnicians } from "@/lib/data";
-import { parseServiceOrderText } from "@/lib/order-parser";
+import { getInternalUserDirectory, getTechnicianDirectory } from "@/lib/data";
+import { buildParserFeedback, parseServiceOrderText } from "@/lib/order-parser";
 import { requireSession } from "@/lib/session";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 function getStringValue(value: string | string[] | undefined) {
   return typeof value === "string" ? value : "";
+}
+
+function getParserDescription(base: string, parsed?: string) {
+  return parsed ? `${base} · preenchido automaticamente pelo parser.` : base;
 }
 
 export default async function NewOrderPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -20,8 +25,11 @@ export default async function NewOrderPage({ searchParams }: { searchParams?: Pr
   const success = getStringValue(params.success);
   const error = getStringValue(params.error);
   const parsed = rawText ? parseServiceOrderText(rawText) : {};
+  const parserFeedback = buildParserFeedback(parsed);
+  const recognized = parserFeedback.filter((item) => item.status === "recognized");
+  const missing = parserFeedback.filter((item) => item.status === "missing");
   const session = await requireSession();
-  const [technicians, internalUsers] = await Promise.all([getTechnicians(), getInternalUsers()]);
+  const [technicians, internalUsers] = await Promise.all([getTechnicianDirectory(), getInternalUserDirectory()]);
   const activeTechnicians = technicians.filter((technician) => technician.active);
   const activeUsers = internalUsers.filter((user) => user.active);
 
@@ -45,6 +53,39 @@ export default async function NewOrderPage({ searchParams }: { searchParams?: Pr
                 </div>
               </FormSection>
             </form>
+
+            {rawText ? (
+              <div className="parser-feedback-panel mt-5 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)]/68 p-4 text-sm text-[var(--text-secondary)]">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[var(--text-primary)]">Leitura do parser</p>
+                    <p className="mt-1 leading-6">{recognized.length} campo(s) reconhecido(s) automaticamente. Revise o que ficou faltando antes de salvar.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="badge-base badge-success">{recognized.length} reconhecidos</span>
+                    <span className="badge-base badge-secondary">{missing.length} pendentes</span>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {recognized.length ? (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Campos reconhecidos</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {recognized.map((field) => <span key={field.key} className="parser-chip parser-chip-success">{field.label}</span>)}
+                      </div>
+                    </div>
+                  ) : null}
+                  {missing.length ? (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Conferir manualmente</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {missing.map((field) => <span key={field.key} className="parser-chip parser-chip-muted">{field.label}</span>)}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-5 app-surface-muted rounded-[1.25rem] p-4 text-sm text-[var(--text-secondary)]">
               <p className="font-semibold text-[var(--text-primary)]">Exemplos suportados pelo parser</p>
@@ -70,8 +111,8 @@ export default async function NewOrderPage({ searchParams }: { searchParams?: Pr
             {rawText ? <span className="badge-base badge-success">Parser aplicado</span> : null}
           </div>
 
-          {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-          {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+          {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+          {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
           <FormHint>Os campos obrigatórios aparecem primeiro. Se você sair da página com alterações, o navegador avisa.</FormHint>
 
           <form id="order-create-form" action={createServiceOrderAction} className="mt-5 space-y-4">
@@ -80,14 +121,14 @@ export default async function NewOrderPage({ searchParams }: { searchParams?: Pr
 
             <FormSection title="Dados principais" description="Informações centrais da ordem e do cliente." icon={<ClipboardPen className="h-4 w-4 text-[var(--primary)]" />}>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <TextInput autoFocus label="Número da O.S." name="orderNumber" defaultValue={parsed.orderNumber ?? ""} required description="Identificador único usado na operação." />
-                <TextInput label="Data de abertura" name="openedAt" type="datetime-local" defaultValue={parsed.openedAt?.slice(0, 16) ?? ""} description="Pode ficar em branco se não veio no texto original." />
-                <TextInput label="Usuário da abertura" name="openedBy" defaultValue={parsed.openedBy ?? ""} description="Pessoa que abriu a ordem na origem." />
-                <TextInput label="Código do cliente" name="clientCode" defaultValue={parsed.clientCode ?? ""} description="Opcional, mas ajuda na busca futura." />
-                <div className="md:col-span-2"><TextInput label="Nome do cliente" name="clientName" defaultValue={parsed.clientName ?? ""} description="Use o nome exatamente como veio da abertura para facilitar rastreio." /></div>
-                <div className="md:col-span-2"><TextInput label="Endereço" name="addressText" defaultValue={parsed.address ?? ""} description="Inclua bloco/apto/local de atendimento quando existir." /></div>
-                <div className="md:col-span-2"><TextInput label="Localização" name="locationLink" defaultValue={parsed.locationLink ?? ""} description="Pode ser link do Maps ou instrução curta de localização." /></div>
-                <div className="md:col-span-2"><TextAreaInput label="Descrição da abertura" name="openingDescription" defaultValue={parsed.openingDescription ?? ""} rows={4} required description="Descreva a dor do cliente e o contexto inicial da ocorrência." /></div>
+                <TextInput autoFocus label="Número da O.S." name="orderNumber" defaultValue={parsed.orderNumber ?? ""} required description={getParserDescription("Identificador único usado na operação.", parsed.orderNumber)} className={parsed.orderNumber ? "field-autofilled" : ""} />
+                <TextInput label="Data de abertura" name="openedAt" type="datetime-local" defaultValue={parsed.openedAt?.slice(0, 16) ?? ""} description={getParserDescription("Pode ficar em branco se não veio no texto original.", parsed.openedAt)} className={parsed.openedAt ? "field-autofilled" : ""} />
+                <TextInput label="Usuário da abertura" name="openedBy" defaultValue={parsed.openedBy ?? ""} description={getParserDescription("Pessoa que abriu a ordem na origem.", parsed.openedBy)} className={parsed.openedBy ? "field-autofilled" : ""} />
+                <TextInput label="Código do cliente" name="clientCode" defaultValue={parsed.clientCode ?? ""} description={getParserDescription("Opcional, mas ajuda na busca futura.", parsed.clientCode)} className={parsed.clientCode ? "field-autofilled" : ""} />
+                <div className="md:col-span-2"><TextInput label="Nome do cliente" name="clientName" defaultValue={parsed.clientName ?? ""} description={getParserDescription("Use o nome exatamente como veio da abertura para facilitar rastreio.", parsed.clientName)} className={parsed.clientName ? "field-autofilled" : ""} /></div>
+                <div className="md:col-span-2"><TextInput label="Endereço" name="addressText" defaultValue={parsed.address ?? ""} description={getParserDescription("Inclua bloco/apto/local de atendimento quando existir.", parsed.address)} className={parsed.address ? "field-autofilled" : ""} /></div>
+                <div className="md:col-span-2"><TextInput label="Localização" name="locationLink" defaultValue={parsed.locationLink ?? ""} description={getParserDescription("Use apenas link http:// ou https:// (ex.: Google Maps ou Maps App).", parsed.locationLink)} className={parsed.locationLink ? "field-autofilled" : ""} /></div>
+                <div className="md:col-span-2"><TextAreaInput label="Descrição da abertura" name="openingDescription" defaultValue={parsed.openingDescription ?? ""} rows={4} required description={getParserDescription("Descreva a dor do cliente e o contexto inicial da ocorrência.", parsed.openingDescription)} className={parsed.openingDescription ? "field-autofilled" : ""} /></div>
               </div>
             </FormSection>
 

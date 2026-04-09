@@ -1,5 +1,6 @@
 import { APP_TIME_ZONE, formatDateTime, formatHours, formatPriority, formatStatus, toDateTimeLocalValue } from "@/lib/format";
 import { isUuid } from "@/lib/validation";
+import { sanitizeExternalHttpUrl } from "@/lib/url-safety";
 import type {
   OrderFilters,
   OrderSortDirection,
@@ -154,7 +155,7 @@ export function mapOrderRow(row: ServiceOrderRow): ServiceOrderItem {
     clientCode: row.client_code,
     clientName: row.client_name,
     address: row.address_text,
-    locationLink: row.location_link,
+    locationLink: sanitizeExternalHttpUrl(row.location_link),
     technicianId: row.technician_id,
     internalOwnerId: row.internal_owner_id,
     assignedTechnician: row.technician_name ?? "Não definido",

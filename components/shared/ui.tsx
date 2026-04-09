@@ -33,8 +33,8 @@ export function Button({ children, className = "", variant = "default", size = "
   return <button type={type} disabled={disabled || loading} className={cn(getButtonClasses(variant, size), className)} {...props}>{loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}{children}</button>;
 }
 
-export function ButtonLink({ href, children, className = "", variant = "secondary", size = "md" }: { href: string; children: ReactNode; className?: string; variant?: ButtonVariant; size?: ButtonSize; }) {
-  return <Link href={href} className={cn(getButtonClasses(variant, size), className)}>{children}</Link>;
+export function ButtonLink({ href, children, className = "", variant = "secondary", size = "md", scroll = true }: { href: string; children: ReactNode; className?: string; variant?: ButtonVariant; size?: ButtonSize; scroll?: boolean; }) {
+  return <Link href={href} scroll={scroll} className={cn(getButtonClasses(variant, size), className)}>{children}</Link>;
 }
 
 export function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -45,25 +45,43 @@ export function FormSection({ title, description, children, compact = false, ico
   return <section className={cn("form-section-card", compact ? "p-4" : "p-5")}><div className="form-section-header"><div className="flex items-start gap-3">{icon ? <div className="form-section-icon">{icon}</div> : null}<div><h3 className="app-title text-base font-semibold">{title}</h3>{description ? <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{description}</p> : null}</div></div></div><div className="mt-4">{children}</div></section>;
 }
 
-export function FormHelper({ children }: { children: ReactNode }) { return <p className="field-hint">{children}</p>; }
+export function FormHelper({ children, id }: { children: ReactNode; id?: string }) { return <p id={id} className="field-hint">{children}</p>; }
 export function FormHint({ children }: { children: ReactNode }) { return <div className="form-hint-box"><Sparkles className="h-4 w-4 text-[var(--primary)]" /><span>{children}</span></div>; }
 
 export function Field({ label, value }: { label: string; value: string }) {
   return <div><p className="app-text-secondary mb-1.5 text-sm font-medium">{label}</p><div className="input-base app-text rounded-[var(--radius-control)] px-3 py-2.5 text-sm shadow-none">{value}</div></div>;
 }
 
-type BaseFieldProps = { label: string; name: string; description?: string; error?: string; required?: boolean; };
+type BaseFieldProps = { label: string; name: string; id?: string; description?: string; error?: string; required?: boolean; };
 
-export function TextInput({ label, name, defaultValue = "", required = false, type = "text", placeholder = "", description, error, autoFocus = false, className = "", ...props }: BaseFieldProps & { defaultValue?: string; type?: string; placeholder?: string; autoFocus?: boolean; className?: string; } & Omit<InputHTMLAttributes<HTMLInputElement>, "name" | "defaultValue" | "type" | "placeholder" | "required" | "autoFocus">) {
-  return <label className="field-stack block"><span className="app-text-secondary mb-1.5 block text-sm font-medium">{label}{required ? <span className="ml-1 text-[var(--danger)]">*</span> : null}</span><input name={name} defaultValue={defaultValue} required={required} type={type} placeholder={placeholder} autoFocus={autoFocus} className={cn("input-base text-sm outline-none", error ? "field-invalid" : "", className)} {...props} />{description ? <span className="field-hint">{description}</span> : null}{error ? <span className="field-error">{error}</span> : null}</label>;
+function buildFieldIds(name: string, explicitId?: string) {
+  const safeName = explicitId ?? `field-${name.replace(/[^a-zA-Z0-9_-]+/g, "-")}`;
+  return {
+    inputId: safeName,
+    descriptionId: `${safeName}-description`,
+    errorId: `${safeName}-error`
+  };
 }
 
-export function SelectInput({ label, name, defaultValue, options, description, error, className = "", ...props }: BaseFieldProps & { defaultValue?: string; options: Array<{ label: string; value: string }>; className?: string; } & Omit<SelectHTMLAttributes<HTMLSelectElement>, "name" | "defaultValue">) {
-  return <label className="field-stack block"><span className="app-text-secondary mb-1.5 block text-sm font-medium">{label}{props.required ? <span className="ml-1 text-[var(--danger)]">*</span> : null}</span><select name={name} defaultValue={defaultValue} className={cn("select-base text-sm outline-none", error ? "field-invalid" : "", className)} {...props}>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{description ? <span className="field-hint">{description}</span> : null}{error ? <span className="field-error">{error}</span> : null}</label>;
+function getAriaDescribedBy(description?: string, error?: string, ids?: { descriptionId: string; errorId: string }) {
+  if (!ids) return undefined;
+  const targets = [description ? ids.descriptionId : "", error ? ids.errorId : ""].filter(Boolean);
+  return targets.length ? targets.join(" ") : undefined;
 }
 
-export function TextAreaInput({ label, name, defaultValue = "", rows = 4, description, error, className = "", ...props }: BaseFieldProps & { defaultValue?: string; rows?: number; className?: string; } & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "name" | "defaultValue" | "rows">) {
-  return <label className="field-stack block"><span className="app-text-secondary mb-1.5 block text-sm font-medium">{label}{props.required ? <span className="ml-1 text-[var(--danger)]">*</span> : null}</span><textarea name={name} defaultValue={defaultValue} rows={rows} className={cn("textarea-base text-sm outline-none", error ? "field-invalid" : "", className)} {...props} />{description ? <span className="field-hint">{description}</span> : null}{error ? <span className="field-error">{error}</span> : null}</label>;
+export function TextInput({ label, name, id, defaultValue = "", required = false, type = "text", placeholder = "", description, error, autoFocus = false, className = "", ...props }: BaseFieldProps & { defaultValue?: string; type?: string; placeholder?: string; autoFocus?: boolean; className?: string; } & Omit<InputHTMLAttributes<HTMLInputElement>, "name" | "defaultValue" | "type" | "placeholder" | "required" | "autoFocus">) {
+  const ids = buildFieldIds(name, id);
+  return <label htmlFor={ids.inputId} className="field-stack block"><span className="app-text-secondary mb-1.5 block text-sm font-medium">{label}{required ? <span className="ml-1 text-[var(--danger)]">*</span> : null}</span><input id={ids.inputId} aria-invalid={error ? true : undefined} aria-describedby={getAriaDescribedBy(description, error, ids)} name={name} defaultValue={defaultValue} required={required} type={type} placeholder={placeholder} autoFocus={autoFocus} className={cn("input-base text-sm outline-none", error ? "field-invalid" : "", className)} {...props} />{description ? <span id={ids.descriptionId} className="field-hint">{description}</span> : null}{error ? <span id={ids.errorId} role="alert" className="field-error">{error}</span> : null}</label>;
+}
+
+export function SelectInput({ label, name, id, defaultValue, options, description, error, className = "", ...props }: BaseFieldProps & { defaultValue?: string; options: Array<{ label: string; value: string }>; className?: string; } & Omit<SelectHTMLAttributes<HTMLSelectElement>, "name" | "defaultValue">) {
+  const ids = buildFieldIds(name, id);
+  return <label htmlFor={ids.inputId} className="field-stack block"><span className="app-text-secondary mb-1.5 block text-sm font-medium">{label}{props.required ? <span className="ml-1 text-[var(--danger)]">*</span> : null}</span><select id={ids.inputId} aria-invalid={error ? true : undefined} aria-describedby={getAriaDescribedBy(description, error, ids)} name={name} defaultValue={defaultValue} className={cn("select-base text-sm outline-none", error ? "field-invalid" : "", className)} {...props}>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{description ? <span id={ids.descriptionId} className="field-hint">{description}</span> : null}{error ? <span id={ids.errorId} role="alert" className="field-error">{error}</span> : null}</label>;
+}
+
+export function TextAreaInput({ label, name, id, defaultValue = "", rows = 4, description, error, className = "", ...props }: BaseFieldProps & { defaultValue?: string; rows?: number; className?: string; } & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "name" | "defaultValue" | "rows">) {
+  const ids = buildFieldIds(name, id);
+  return <label htmlFor={ids.inputId} className="field-stack block"><span className="app-text-secondary mb-1.5 block text-sm font-medium">{label}{props.required ? <span className="ml-1 text-[var(--danger)]">*</span> : null}</span><textarea id={ids.inputId} aria-invalid={error ? true : undefined} aria-describedby={getAriaDescribedBy(description, error, ids)} name={name} defaultValue={defaultValue} rows={rows} className={cn("textarea-base text-sm outline-none", error ? "field-invalid" : "", className)} {...props} />{description ? <span id={ids.descriptionId} className="field-hint">{description}</span> : null}{error ? <span id={ids.errorId} role="alert" className="field-error">{error}</span> : null}</label>;
 }
 
 export function StatLine({ label, value, valueClassName = "app-text" }: { label: string; value: string; valueClassName?: string }) {

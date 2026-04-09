@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
+import { isTrustedServerActionRequest } from "@/lib/server-action-security";
 import { requireAdmin } from "@/lib/session";
 import { ensureUuid } from "@/lib/validation";
 
@@ -16,7 +17,13 @@ function done(message: string) {
   redirect(`/technicians?success=${encodeURIComponent(message)}`);
 }
 
+async function guardTechnicianAction() {
+  if (await isTrustedServerActionRequest()) return;
+  redirect(`/technicians?error=${encodeURIComponent("Solicitação bloqueada por segurança. Recarregue a página e tente novamente.")}`);
+}
+
 export async function createTechnicianAction(formData: FormData) {
+  await guardTechnicianAction();
   await requireAdmin();
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -28,6 +35,7 @@ export async function createTechnicianAction(formData: FormData) {
 }
 
 export async function updateTechnicianAction(formData: FormData) {
+  await guardTechnicianAction();
   await requireAdmin();
   const id = ensureUuid(String(formData.get("id") ?? ""), "Técnico");
   const fullName = String(formData.get("fullName") ?? "").trim();
@@ -39,6 +47,7 @@ export async function updateTechnicianAction(formData: FormData) {
 }
 
 export async function toggleTechnicianAction(formData: FormData) {
+  await guardTechnicianAction();
   await requireAdmin();
   const id = ensureUuid(String(formData.get("id") ?? ""), "Técnico");
   const nextActive = String(formData.get("nextActive") ?? "false") === "true";

@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { toDateTimeLocalValue } from "@/lib/format";
+import { isTrustedServerActionRequest } from "@/lib/server-action-security";
+import { ensureExternalHttpUrl } from "@/lib/url-safety";
 import { cleanText, ensureDateTime, ensureEnum, ensureUuid, normalizeUuid } from "@/lib/validation";
 import type { OrderPriorityDb, OrderStatusDb } from "@/types";
 
@@ -20,6 +22,12 @@ function stripActionParam(url: string) {
 function appendMessage(url: string, key: "success" | "error", message: string) {
   const joiner = url.includes("?") ? "&" : "?";
   return `${stripActionParam(url)}${joiner}${key}=${encodeMessage(message)}`;
+}
+
+async function guardOrderAction(fallbackPath: string) {
+  const isTrusted = await isTrustedServerActionRequest();
+  if (isTrusted) return;
+  redirect(appendMessage(fallbackPath, "error", "Solicitação bloqueada por segurança. Recarregue a página e tente novamente."));
 }
 
 function normalizeSupportTechnicianIds(formData: FormData) {
@@ -42,7 +50,7 @@ function normalizeOrderPayload(formData: FormData) {
     clientCode: cleanText(formData.get("clientCode")),
     clientName: cleanText(formData.get("clientName")),
     addressText: cleanText(formData.get("addressText")),
-    locationLink: cleanText(formData.get("locationLink")),
+    locationLink: ensureExternalHttpUrl(cleanText(formData.get("locationLink")), "Link de localização"),
     technicianId,
     supportTechnicianIds: normalizeSupportTechnicianIds(formData).filter((id) => id !== technicianId),
     internalOwnerId: normalizeUuid(cleanText(formData.get("internalOwnerId"))),
@@ -147,6 +155,7 @@ function ensureLifecycleTransition(currentStatus: OrderStatusDb, action: "status
 }
 
 export async function createServiceOrderAction(formData: FormData) {
+  await guardOrderAction("/orders/new");
   const session = await requireSession();
   const payload = normalizeOrderPayload(formData);
 
@@ -226,9 +235,11 @@ export async function createServiceOrderAction(formData: FormData) {
 }
 
 export async function updateServiceOrderAction(formData: FormData) {
+  const rawId = String(formData.get("id") ?? "").trim();
+  const redirectTo = String(formData.get("redirectTo") ?? (rawId ? `/orders?selected=${rawId}` : "/orders")).trim();
+  await guardOrderAction(redirectTo);
   const session = await requireSession();
-  const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Ordem");
-  const redirectTo = String(formData.get("redirectTo") ?? `/orders?selected=${id}`).trim();
+  const id = ensureUuid(rawId, "Ordem");
   const payload = normalizeOrderPayload(formData);
 
   if (!payload.orderNumber || !payload.openingDescription || !payload.internalOwnerId) {
@@ -299,9 +310,11 @@ export async function updateServiceOrderAction(formData: FormData) {
 }
 
 export async function updateServiceOrderStatusAction(formData: FormData) {
+  const rawId = String(formData.get("id") ?? "").trim();
+  const redirectTo = String(formData.get("redirectTo") ?? (rawId ? `/orders?selected=${rawId}` : "/orders")).trim();
+  await guardOrderAction(redirectTo);
   const session = await requireSession();
-  const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Ordem");
-  const redirectTo = String(formData.get("redirectTo") ?? `/orders?selected=${id}`).trim();
+  const id = ensureUuid(rawId, "Ordem");
   const status = String(formData.get("status") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
@@ -331,9 +344,11 @@ export async function updateServiceOrderStatusAction(formData: FormData) {
 }
 
 export async function finalizeServiceOrderAction(formData: FormData) {
+  const rawId = String(formData.get("id") ?? "").trim();
+  const redirectTo = String(formData.get("redirectTo") ?? (rawId ? `/orders?selected=${rawId}` : "/orders")).trim();
+  await guardOrderAction(redirectTo);
   const session = await requireSession();
-  const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Ordem");
-  const redirectTo = String(formData.get("redirectTo") ?? `/orders?selected=${id}`).trim();
+  const id = ensureUuid(rawId, "Ordem");
   const note = String(formData.get("note") ?? "").trim();
 
   if (!note) redirect(appendMessage(redirectTo, "error", "Informe a observação de fechamento para finalizar a O.S."));
@@ -359,9 +374,11 @@ export async function finalizeServiceOrderAction(formData: FormData) {
 }
 
 export async function reopenServiceOrderAction(formData: FormData) {
+  const rawId = String(formData.get("id") ?? "").trim();
+  const redirectTo = String(formData.get("redirectTo") ?? (rawId ? `/orders?selected=${rawId}` : "/orders")).trim();
+  await guardOrderAction(redirectTo);
   const session = await requireSession();
-  const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Ordem");
-  const redirectTo = String(formData.get("redirectTo") ?? `/orders?selected=${id}`).trim();
+  const id = ensureUuid(rawId, "Ordem");
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) redirect(appendMessage(redirectTo, "error", "Informe o motivo da reabertura."));
 
@@ -386,9 +403,11 @@ export async function reopenServiceOrderAction(formData: FormData) {
 }
 
 export async function cancelServiceOrderAction(formData: FormData) {
+  const rawId = String(formData.get("id") ?? "").trim();
+  const redirectTo = String(formData.get("redirectTo") ?? (rawId ? `/orders?selected=${rawId}` : "/orders")).trim();
+  await guardOrderAction(redirectTo);
   const session = await requireSession();
-  const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Ordem");
-  const redirectTo = String(formData.get("redirectTo") ?? `/orders?selected=${id}`).trim();
+  const id = ensureUuid(rawId, "Ordem");
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) redirect(appendMessage(redirectTo, "error", "Informe o motivo do cancelamento."));
 
@@ -413,9 +432,11 @@ export async function cancelServiceOrderAction(formData: FormData) {
 }
 
 export async function addServiceOrderNoteAction(formData: FormData) {
+  const rawId = String(formData.get("id") ?? "").trim();
+  const redirectTo = String(formData.get("redirectTo") ?? (rawId ? `/orders?selected=${rawId}` : "/orders")).trim();
+  await guardOrderAction(redirectTo);
   const session = await requireSession();
-  const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Ordem");
-  const redirectTo = String(formData.get("redirectTo") ?? `/orders?selected=${id}`).trim();
+  const id = ensureUuid(rawId, "Ordem");
   const note = String(formData.get("note") ?? "").trim();
   if (!note) redirect(appendMessage(redirectTo, "error", "Escreva uma observação antes de salvar."));
 
@@ -438,6 +459,7 @@ export async function addServiceOrderNoteAction(formData: FormData) {
 
 
 export async function saveOrderViewAction(formData: FormData) {
+  await guardOrderAction("/orders");
   const session = await requireSession();
   const name = String(formData.get("name") ?? "").trim();
   const queryString = String(formData.get("queryString") ?? "").trim();
@@ -469,14 +491,11 @@ export async function saveOrderViewAction(formData: FormData) {
 }
 
 export async function deleteOrderViewAction(formData: FormData) {
+  await guardOrderAction("/orders");
   const session = await requireSession();
-  const id = String(formData.get("id") ?? "").trim();
-
-  if (!id) {
-    redirect(`/orders?error=${encodeMessage("Filtro salvo não informado.")}`);
-  }
 
   try {
+    const id = ensureUuid(String(formData.get("id") ?? "").trim(), "Filtro salvo");
     await db.query(`delete from saved_order_views where id = $1::uuid and internal_user_id = $2::uuid`, [id, session.id]);
     revalidatePath("/orders");
     redirect(`/orders?success=${encodeMessage("Filtro salvo removido.")}`);

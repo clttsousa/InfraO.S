@@ -3,27 +3,38 @@ import { getEnv } from "@/lib/env";
 
 declare global {
   var __infraosPool: Pool | undefined;
+  var __infraosPoolSignature: string | undefined;
 }
 
-function getPool() {
-  if (global.__infraosPool) {
-    return global.__infraosPool;
-  }
-
+function getPoolSignature() {
   const env = getEnv();
-  const pool = new Pool({
+  return [env.databaseUrl, env.dbPoolMax, env.dbIdleTimeoutMs, env.dbConnectionTimeoutMs].join("|");
+}
+
+function createPool() {
+  const env = getEnv();
+  return new Pool({
     connectionString: env.databaseUrl,
     max: env.dbPoolMax,
     idleTimeoutMillis: env.dbIdleTimeoutMs,
     connectionTimeoutMillis: env.dbConnectionTimeoutMs,
     allowExitOnIdle: true
   });
+}
 
-  if (process.env.NODE_ENV !== "production") {
-    global.__infraosPool = pool;
+function getPool() {
+  const signature = getPoolSignature();
+  if (!global.__infraosPool) {
+    global.__infraosPool = createPool();
+    global.__infraosPoolSignature = signature;
+    return global.__infraosPool;
   }
-
-  return pool;
+  if (process.env.NODE_ENV !== "production" && global.__infraosPoolSignature !== signature) {
+    void global.__infraosPool.end().catch(() => undefined);
+    global.__infraosPool = createPool();
+    global.__infraosPoolSignature = signature;
+  }
+  return global.__infraosPool;
 }
 
 export const db = new Proxy({} as Pool, {

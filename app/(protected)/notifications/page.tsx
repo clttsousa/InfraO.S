@@ -1,7 +1,8 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { AlertTriangle, BellRing, CalendarClock, Clock3, Activity } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { EmptyState, PageHeader, Surface } from "@/components/shared/ui";
+import { ButtonLink, EmptyState, PageHeader, Surface } from "@/components/shared/ui";
 import { getNotificationSummary } from "@/lib/data";
 
 function NotificationOverviewCard({ title, value, description, tone, icon }: { title: string; value: number; description: string; tone: string; icon: ReactNode }) {
@@ -28,7 +29,14 @@ export default async function NotificationsPage() {
       <PageHeader
         eyebrow="Operação ativa"
         title="Central de notificações"
-        description="Resumo operacional derivado das ordens atrasadas, vencimentos do dia e filas sem atualização."
+        description="Resumo operacional derivado das ordens atrasadas, vencimentos do dia e filas sem atualização. Agora com atalhos rápidos para abrir a fila certa sem navegação manual."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href="/orders?lateOnly=1" variant="secondary" size="sm">Ver atrasadas</ButtonLink>
+            <ButtonLink href="/orders?dueToday=1" variant="secondary" size="sm">Ver vencendo hoje</ButtonLink>
+            <ButtonLink href="/orders?staleOnly=1" variant="secondary" size="sm">Ver sem atualização</ButtonLink>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -39,9 +47,16 @@ export default async function NotificationsPage() {
       </div>
 
       <Surface className="p-5">
-        <div className="flex items-center gap-2">
-          <BellRing className="h-4 w-4 text-[var(--primary)]" />
-          <h3 className="app-title text-lg font-semibold">Fila viva de alertas</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <BellRing className="h-4 w-4 text-[var(--primary)]" />
+            <h3 className="app-title text-lg font-semibold">Fila viva de alertas</h3>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs text-[var(--text-secondary)]">
+            <span className="badge-base badge-danger">{summary.counts.late} críticas</span>
+            <span className="badge-base badge-warning">{summary.counts.dueToday} hoje</span>
+            <span className="badge-base badge-primary">{summary.counts.stale} sem atualização</span>
+          </div>
         </div>
 
         {summary.items.length === 0 ? (
@@ -51,11 +66,12 @@ export default async function NotificationsPage() {
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {summary.items.map((item) => (
-              <a key={item.id} href={item.href} className={`notification-card notification-card-${item.level}`}>
+              <Link key={item.id} href={item.href} scroll={false} className={`notification-card notification-card-${item.level}`}>
                 <div className="notification-card-title">{item.title}</div>
                 <div className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{item.description}</div>
                 {item.when ? <div className="mt-2 text-xs text-[var(--text-tertiary)]">{item.when}</div> : null}
-              </a>
+                <div className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-[var(--primary)]">{item.actionLabel ?? 'Abrir contexto'} <span aria-hidden="true">→</span></div>
+              </Link>
             ))}
           </div>
         )}
