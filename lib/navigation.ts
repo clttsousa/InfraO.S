@@ -1,4 +1,4 @@
-import { BarChart3, BellRing, ClipboardList, LayoutDashboard, PlusSquare, Settings, UserCog, Users } from "lucide-react";
+import { BarChart3, BellRing, ClipboardList, History, LayoutDashboard, PlusSquare, Settings, UserCog, Users } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 
 type NavigationItem = {
@@ -16,6 +16,7 @@ const allNavigationItems: NavigationItem[] = [
   { href: "/technicians", label: "Técnicos", icon: Users, adminOnly: true },
   { href: "/users", label: "Usuários", icon: UserCog, adminOnly: true },
   { href: "/reports", label: "Relatórios", icon: BarChart3 },
+  { href: "/audit", label: "Auditoria", icon: History, adminOnly: true },
   { href: "/settings", label: "Configurações", icon: Settings, adminOnly: true }
 ];
 

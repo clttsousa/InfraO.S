@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { UserRoleForm } from "@/components/users/user-role-form";
+import { UsersRealtimeSync } from "@/components/users/users-realtime-sync";
 import { UserToggleForm } from "@/components/users/user-toggle-form";
 import { Button, ButtonLink, EmptyState, FeedbackMessage, FormSection, PageHeader, SelectInput, Surface, TextInput } from "@/components/shared/ui";
 import { getInternalUserById, getInternalUsers } from "@/lib/data";
@@ -278,9 +279,12 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">A lista é ordenada automaticamente por atividade mais recente.</p>
                 </div>
               </div>
-              <div className="badge-base badge-neutral">
-                <Activity className="h-3.5 w-3.5" />
-                Mais recentes primeiro
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="badge-base badge-neutral">
+                  <Activity className="h-3.5 w-3.5" />
+                  Mais recentes primeiro
+                </div>
+                <UsersRealtimeSync />
               </div>
             </div>
 

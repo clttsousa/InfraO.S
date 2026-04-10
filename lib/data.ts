@@ -5,3 +5,5 @@ export { getSavedOrderViews } from "@/lib/server-data/saved-order-views";
 export { getInternalUserById, getInternalUsers, getTechnicianById, getTechnicians } from "@/lib/server-data/users";
 
 export { getNotificationSummary } from "@/lib/server-data/notifications";
+
+export { getAuditEvents, getServiceOrderAuditEvents } from "@/lib/server-data/audit";

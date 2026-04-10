@@ -11,9 +11,10 @@ function isRecentlyUpdated(order: ServiceOrderItem) {
   return diff >= 0 && diff <= 1000 * 60 * 60 * 6;
 }
 
-function getRowClass(order: ServiceOrderItem, selectedId?: string) {
+function getRowClass(order: ServiceOrderItem, selectedId?: string, pulseOrderId?: string) {
   const classes = ["table-row", "table-row-clickable", "group"];
   if (selectedId === order.id) classes.push("table-row-selected");
+  if (pulseOrderId === order.id) classes.push("table-row-live-update");
   if (isRecentlyUpdated(order)) classes.push("table-row-recent");
   if (order.isLate) classes.push("table-row-late", "alert-emphasis-late");
   else if (order.isDueToday) classes.push("table-row-due", "alert-emphasis-due");
@@ -32,7 +33,7 @@ function OrderAlertSummary({ order }: { order: ServiceOrderItem }) {
   );
 }
 
-function OrderMobileCard({ order, isSelected, onOpen }: { order: ServiceOrderItem; isSelected: boolean; onOpen: () => void }) {
+function OrderMobileCard({ order, isSelected, isPulsing, onOpen }: { order: ServiceOrderItem; isSelected: boolean; isPulsing?: boolean; onOpen: () => void }) {
   const toneClass = order.isLate ? "alert-emphasis-late" : order.isDueToday ? "alert-emphasis-due" : order.isStale ? "alert-emphasis-stale" : "";
 
   return (
@@ -41,7 +42,7 @@ function OrderMobileCard({ order, isSelected, onOpen }: { order: ServiceOrderIte
       onClick={onOpen}
       aria-pressed={isSelected}
       aria-label={`Abrir detalhes da ordem ${order.number}`}
-      className={`order-card order-card-button app-surface animate-slideInUp w-full p-4 text-left ${toneClass} ${isSelected ? "table-row-selected" : ""}`}
+      className={`order-card order-card-button app-surface animate-slideInUp w-full p-4 text-left ${toneClass} ${isSelected ? "table-row-selected" : ""} ${isPulsing ? "table-row-live-update" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -74,7 +75,7 @@ function OrderMobileCard({ order, isSelected, onOpen }: { order: ServiceOrderIte
   );
 }
 
-export function OrderInteractiveList({ items, selectedId, onSelect }: { items: ServiceOrderItem[]; selectedId?: string; onSelect: (orderId: string) => void }) {
+export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect }: { items: ServiceOrderItem[]; selectedId?: string; pulseOrderId?: string; onSelect: (orderId: string) => void }) {
   const orders = useMemo(() => items, [items]);
 
   const openOrder = (orderId: string) => {
@@ -101,7 +102,7 @@ export function OrderInteractiveList({ items, selectedId, onSelect }: { items: S
     <>
       <div className="space-y-4 xl:hidden">
         {orders.map((order) => {
-          return <OrderMobileCard key={order.id} order={order} isSelected={selectedId === order.id} onOpen={() => openOrder(order.id)} />;
+          return <OrderMobileCard key={order.id} order={order} isSelected={selectedId === order.id} isPulsing={pulseOrderId === order.id} onOpen={() => openOrder(order.id)} />;
         })}
       </div>
 
@@ -124,7 +125,7 @@ export function OrderInteractiveList({ items, selectedId, onSelect }: { items: S
                 return (
                   <tr
                     key={order.id}
-                    className={getRowClass(order, selectedId)}
+                    className={getRowClass(order, selectedId, pulseOrderId)}
                     tabIndex={0}
                     aria-selected={selectedId === order.id}
                                   onClick={() => openOrder(order.id)}

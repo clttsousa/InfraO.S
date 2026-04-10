@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRealtime } from "@/components/realtime/realtime-provider";
 import { AlertTriangle } from "lucide-react";
 import { OrderDetailDrawer } from "@/components/orders/order-detail-drawer";
 import { OrderDetailPanel } from "@/components/orders/order-detail-panel";
@@ -52,6 +53,11 @@ export function OrderWorkspaceClient({
   success,
   error,
 }: OrderWorkspaceClientProps) {
+  const { subscribe } = useRealtime();
+  const [orders, setOrders] = useState<ServiceOrderItem[]>(items);
+  const [pulseOrderId, setPulseOrderId] = useState<string | undefined>(undefined);
+  const refreshTimerRef = useRef<number | null>(null);
+  const pulseTimerRef = useRef<number | null>(null);
   const [selectedId, setSelectedId] = useState<string | undefined>(initialSelectedId);
   const [drawerOpen, setDrawerOpen] = useState(Boolean(initialSelectedId));
   const [action, setAction] = useState<string | undefined>(initialAction);
@@ -62,6 +68,32 @@ export function OrderWorkspaceClient({
   const currentRequestId = useRef<string | null>(null);
 
   const baseHref = useMemo(() => buildOrdersHref(baseQueryString, selectedId), [baseQueryString, selectedId]);
+
+  const refreshList = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/orders${baseQueryString ? `?${baseQueryString}` : ""}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Falha ao atualizar a fila de ordens.");
+      const payload = (await response.json()) as { items: ServiceOrderItem[] };
+      setOrders(payload.items ?? []);
+    } catch {
+      // Falha transitória ignorada; próximo evento ou interação tenta novamente.
+    }
+  }, [baseQueryString]);
+
+  const refreshDetail = useCallback(async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Falha ao atualizar detalhes da O.S.");
+      const payload = (await response.json()) as { order: ServiceOrderDetail | null };
+      if (payload.order) {
+        detailCacheRef.current.set(orderId, payload.order);
+        setDetail(payload.order);
+        setLoadError(null);
+      }
+    } catch {
+      // Mantém o detalhe atual se a atualização incremental falhar.
+    }
+  }, []);
 
   const syncUrl = useCallback(
     (nextSelectedId?: string, nextAction?: string, mode: HistoryMode = "replace") => {
@@ -151,9 +183,36 @@ export function OrderWorkspaceClient({
   );
 
   useEffect(() => {
+    setOrders(items);
+  }, [items]);
+
+  useEffect(() => {
     if (!initialSelectedId) return;
     void loadDetail(initialSelectedId);
   }, [initialSelectedId, loadDetail]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (!["order.created", "order.updated", "order.status_changed", "order.deadline_changed", "order.assigned_changed"].includes(event.type)) {
+        return;
+      }
+
+      if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = window.setTimeout(() => {
+        void refreshList();
+      }, 180);
+
+      if (event.entityId) {
+        setPulseOrderId(event.entityId);
+        if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+        pulseTimerRef.current = window.setTimeout(() => setPulseOrderId(undefined), 2200);
+      }
+
+      if (event.entityId && event.entityId === selectedId) {
+        void refreshDetail(event.entityId);
+      }
+    });
+  }, [refreshDetail, refreshList, selectedId, subscribe]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -185,8 +244,9 @@ export function OrderWorkspaceClient({
   return (
     <>
       <OrderInteractiveList
-        items={items}
+        items={orders}
         selectedId={selectedId}
+        pulseOrderId={pulseOrderId}
         onSelect={openOrder}
       />
 

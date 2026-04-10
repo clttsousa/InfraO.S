@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateInternalUser, getSessionCookie, signSessionToken } from "@/lib/auth";
+import { publishRealtimeEvent } from "@/lib/realtime";
 import { query } from "@/lib/db";
 import { ensureEmail, ensurePasswordStrength } from "@/lib/validation";
 
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
     }
 
     await registerAttempt(rateKey, true);
+    publishRealtimeEvent({ type: "user.presence_changed", scope: "users", entityId: user.id, payload: { status: "ONLINE", source: "login" } });
     const token = await signSessionToken(user);
     const response = NextResponse.json({ ok: true, user });
     response.cookies.set(getSessionCookie(token));

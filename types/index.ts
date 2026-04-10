@@ -20,6 +20,46 @@ export type OrderPriority = "Baixa" | "Média" | "Alta" | "Urgente";
 export type UserRole = "ADMIN" | "OPERADOR";
 export type PresenceStatus = "ONLINE" | "AUSENTE" | "OFFLINE";
 
+export type AuditScope = "order" | "user" | "technician" | "system";
+export type AuditEntityType = "service_order" | "internal_user" | "technician" | "system";
+export type AuditFieldName =
+  | "status"
+  | "deadline_at"
+  | "technician_id"
+  | "support_technician_ids"
+  | "internal_owner_id"
+  | "priority"
+  | "order_number";
+export type AuditActionType =
+  | "order.created"
+  | "order.updated"
+  | "order.status_changed"
+  | "order.deadline_changed"
+  | "order.assigned_changed"
+  | "order.support_team_changed"
+  | "order.finalized"
+  | "order.reopened"
+  | "order.canceled";
+
+export type AuditEventItem = {
+  id: string;
+  entityType: string;
+  entityId?: string | null;
+  entityLabel?: string | null;
+  scope: string;
+  actionType: string;
+  fieldName?: string | null;
+  actorUserId?: string | null;
+  actorName: string;
+  oldValue?: unknown;
+  newValue?: unknown;
+  note?: string | null;
+  metadata?: Record<string, unknown> | null;
+  when: string;
+  createdAtIso?: string | null;
+};
+
+
 export type InternalUserItem = {
   id: string;
   name: string;
@@ -126,6 +166,7 @@ export type ServiceOrderDetail = ServiceOrderItem & {
   deadlineInput: string;
   notes: ServiceOrderNoteItem[];
   logs: ServiceOrderLogItem[];
+  auditEvents: AuditEventItem[];
 };
 
 export type ActivityItem = {

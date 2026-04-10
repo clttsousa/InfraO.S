@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNotificationSummary } from "@/lib/data";
+import { getDashboardData } from "@/lib/data";
 import { requireApiSession } from "@/lib/session";
 
 export async function GET() {
@@ -7,10 +7,7 @@ export async function GET() {
   if (session instanceof NextResponse) {
     return session;
   }
-  const summary = await getNotificationSummary();
-  return NextResponse.json(summary, {
-    headers: {
-      'Cache-Control': 'no-store, max-age=0'
-    }
-  });
+
+  const data = await getDashboardData();
+  return NextResponse.json(data, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }

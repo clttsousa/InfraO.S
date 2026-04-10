@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "@/lib/constants";
 import { query } from "@/lib/db";
+import { publishRealtimeEvent } from "@/lib/realtime";
 import { requireAdmin, requireSession } from "@/lib/session";
 import { ensureEmail, ensurePasswordStrength, ensureUuid } from "@/lib/validation";
 
@@ -43,7 +44,8 @@ export async function createInternalUserAction(formData: FormData) {
   if (!["ADMIN", "OPERADOR"].includes(role)) fail("Perfil inválido.");
 
   try {
-    await query(`insert into internal_users (full_name, email, password_hash, role, is_active, password_changed_at) values ($1, $2, crypt($3, gen_salt('bf')), $4, $5, now())`, [fullName, email, password, role, isActive]);
+    const created = await query<{ id: string }>(`insert into internal_users (full_name, email, password_hash, role, is_active, password_changed_at) values ($1, $2, crypt($3, gen_salt('bf')), $4, $5, now()) returning id`, [fullName, email, password, role, isActive]);
+    publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: created.rows[0]?.id, payload: { action: "created" } });
   } catch (error) {
     if (error instanceof Error && /duplicate key|unique/i.test(error.message)) fail("Já existe um usuário com este e-mail.");
     throw error;
@@ -66,6 +68,7 @@ export async function updateInternalUserAction(formData: FormData) {
 
   try {
     await query(`update internal_users set full_name = $2, email = $3, role = $4, updated_at = now() where id = $1`, [id, fullName, email, role]);
+    publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: id, payload: { action: "profile_updated" } });
   } catch (error) {
     if (error instanceof Error && /duplicate key|unique/i.test(error.message)) fail("Já existe um usuário com este e-mail.");
     throw error;
@@ -86,6 +89,7 @@ export async function updateInternalUserRoleAction(formData: FormData) {
 
   await ensureLastAdminIsPreserved(id, role);
   await query(`update internal_users set full_name = $2, role = $3, updated_at = now() where id = $1`, [id, fullName, role]);
+  publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: id, payload: { action: "role_updated" } });
   success("Perfil do usuário atualizado.");
 }
 
@@ -97,6 +101,7 @@ export async function toggleInternalUserAction(formData: FormData) {
   if (session.id === id && !nextActive) fail("Você não pode inativar a sua própria conta em sessão.");
   await ensureLastAdminIsPreserved(id, undefined, nextActive);
   await query(`update internal_users set is_active = $2, updated_at = now() where id = $1`, [id, nextActive]);
+  publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: id, payload: { action: "active_changed", active: nextActive } });
   success("Status do usuário atualizado.");
 }
 
@@ -106,6 +111,7 @@ export async function resetInternalUserPasswordAction(formData: FormData) {
   const newPassword = ensurePasswordStrength(String(formData.get("newPassword") ?? ""));
 
   await query(`update internal_users set password_hash = crypt($2, gen_salt('bf')), password_changed_at = now(), session_version = session_version + 1, updated_at = now() where id = $1`, [id, newPassword]);
+  publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: id, payload: { action: "password_reset" } });
   success("Senha redefinida.");
 }
 
@@ -129,6 +135,7 @@ export async function changeOwnPasswordAction(formData: FormData) {
   }
 
   await query(`update internal_users set password_hash = crypt($2, gen_salt('bf')), password_changed_at = now(), session_version = session_version + 1, updated_at = now() where id = $1`, [session.id, newPassword]);
+  publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: session.id, payload: { action: "password_changed" } });
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE_NAME);
   redirect(`/login?success=${encodeURIComponent("Senha alterada. Faça login novamente.")}`);

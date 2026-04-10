@@ -1,6 +1,7 @@
 import { query } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { isUuid } from "@/lib/validation";
+import { getServiceOrderAuditEvents } from "@/lib/server-data/audit";
 import { baseOrderSelect, buildOrderFilters, mapOrderDetail, mapOrderRow, type ServiceOrderRow } from "@/lib/server-data/shared";
 import type { OrderFilters, ServiceOrderItem, ServiceOrderListResult, ServiceOrderLogItem, ServiceOrderNoteItem } from "@/types";
 
@@ -101,5 +102,10 @@ export async function getServiceOrderDetail(id: string) {
     when: formatDateTime(log.created_at)
   }));
 
-  return mapOrderDetail(row, notes, logs);
+  const auditEvents = await getServiceOrderAuditEvents(id);
+
+  return {
+    ...mapOrderDetail(row, notes, logs),
+    auditEvents
+  };
 }

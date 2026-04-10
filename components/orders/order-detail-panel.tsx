@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Ban,
   CheckCircle2,
@@ -24,6 +24,7 @@ import {
   updateServiceOrderAction,
   updateServiceOrderStatusAction
 } from "@/app/(protected)/orders/actions";
+import { AuditEventCard } from "@/components/audit/audit-event-list";
 import { PriorityBadge, StatusBadge } from "@/components/orders/order-status";
 import { OrderActionOverlay } from "@/components/orders/order-action-overlay";
 import { SupportTechnicianSelector } from "@/components/orders/support-technician-selector";
@@ -43,6 +44,8 @@ import {
 } from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_OPTIONS } from "@/lib/constants";
 import type { InternalUserItem, ServiceOrderDetail, ServiceOrderLogItem, TechnicianItem } from "@/types";
+
+type DetailTab = "notes" | "timeline" | "audit";
 
 function buildHref(baseHref: string, action?: string) {
   if (!action) return baseHref;
@@ -103,6 +106,12 @@ function DetailTimelineCard({ title, subtitle, note, when, tone, icon }: { title
 }
 
 export function OrderDetailPanel({ order, technicians, internalUsers, action, onActionChange, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianItem[]; internalUsers: InternalUserItem[]; action?: string; onActionChange?: (action?: string) => void; baseHref: string; success?: string; error?: string; }) {
+  const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
+
+  useEffect(() => {
+    if (order?.id) setActiveTab("timeline");
+  }, [order?.id]);
+
   if (!order) {
     return <div className="p-6"><EmptyState compact title="Nenhuma O.S. selecionada" description="Selecione uma ordem na tabela para abrir o painel lateral de detalhes e operar sem sair da listagem." /></div>;
   }
@@ -181,14 +190,38 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
       </Surface>
 
       <Surface className="p-5">
-        <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Observações internas</h3></div>
-        {order.notes.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem observações" description="Adicione notas internas para registrar contexto operacional adicional." /></div> : <div className="mt-4 space-y-3">{order.notes.map((note) => <DetailTimelineCard key={note.id} title={note.author} subtitle="Registrou uma observação interna nesta ordem." note={note.note} when={note.when} tone="info" icon={<MessageSquare className="h-4 w-4" />} />)}</div>}
-      </Surface>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2"><History className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Leitura operacional e auditoria</h3></div>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">Separe a timeline operacional da trilha auditável para conferir o que mudou com muito mais clareza.</p>
+          </div>
+          <div className="detail-tab-group" role="tablist" aria-label="Navegação de detalhes da O.S.">
+            <button type="button" className={`detail-tab ${activeTab === "notes" ? "is-active" : ""}`} onClick={() => setActiveTab("notes")}>Observações</button>
+            <button type="button" className={`detail-tab ${activeTab === "timeline" ? "is-active" : ""}`} onClick={() => setActiveTab("timeline")}>Timeline</button>
+            <button type="button" className={`detail-tab ${activeTab === "audit" ? "is-active" : ""}`} onClick={() => setActiveTab("audit")}>Auditoria</button>
+          </div>
+        </div>
 
-      <Surface className="p-5">
-        <div className="flex items-center gap-2"><History className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Timeline da O.S.</h3></div>
-        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">Leitura cronológica refinada das alterações, reaberturas, status e edições relevantes.</p>
-        {order.logs.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem histórico" description="Quando houver ações na ordem, a timeline ficará disponível aqui." /></div> : <div className="mt-4 space-y-3">{order.logs.map((log) => { const meta = getLogMeta(log); const Icon = meta.icon; return <DetailTimelineCard key={log.id} title={meta.label} subtitle={`${log.actor} · ${log.description}`} note={log.note} when={log.when} tone={meta.tone} icon={<Icon className="h-4 w-4" />} />; })}</div>}
+        {activeTab === "notes" ? (
+          <div className="mt-4">
+            {order.notes.length === 0 ? <EmptyState compact title="Sem observações" description="Adicione notas internas para registrar contexto operacional adicional." /> : <div className="space-y-3">{order.notes.map((note) => <DetailTimelineCard key={note.id} title={note.author} subtitle="Registrou uma observação interna nesta ordem." note={note.note} when={note.when} tone="info" icon={<MessageSquare className="h-4 w-4" />} />)}</div>}
+          </div>
+        ) : null}
+
+        {activeTab === "timeline" ? (
+          <div className="mt-4">
+            {order.logs.length === 0 ? <EmptyState compact title="Sem histórico" description="Quando houver ações na ordem, a timeline ficará disponível aqui." /> : <div className="space-y-3">{order.logs.map((log) => { const meta = getLogMeta(log); const Icon = meta.icon; return <DetailTimelineCard key={log.id} title={meta.label} subtitle={`${log.actor} · ${log.description}`} note={log.note} when={log.when} tone={meta.tone} icon={<Icon className="h-4 w-4" />} />; })}</div>}
+          </div>
+        ) : null}
+
+        {activeTab === "audit" ? (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm leading-6 text-[var(--text-secondary)]">
+              A auditoria mostra quem alterou, qual campo foi impactado, o valor anterior, o novo valor e o momento exato da mudança.
+            </div>
+            {order.auditEvents.length === 0 ? <EmptyState compact title="Sem auditoria estruturada" description="Quando houver alterações rastreáveis nesta O.S., elas aparecerão aqui separadas da timeline comum." /> : <div className="space-y-3">{order.auditEvents.map((event) => <AuditEventCard key={event.id} event={event} />)}</div>}
+          </div>
+        ) : null}
       </Surface>
 
       <OrderActionOverlay isOpen={Boolean(action)} closeHref={closeHref} onClose={closeAction}>

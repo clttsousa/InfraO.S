@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Bell, CheckCircle2, Clock3, TriangleAlert, Activity } from "lucide-react";
 import { cn } from "@/components/shared/utils";
 import type { NotificationItem, NotificationSummary } from "@/types";
@@ -46,47 +47,56 @@ async function fetchNotificationSummary() {
 }
 
 export function NotificationBell({ summary }: { summary: NotificationSummary }) {
+  const { isConnected, subscribe } = useRealtime();
   const [open, setOpen] = useState(false);
   const [summaryState, setSummaryState] = useState(summary);
   const [acknowledgedIds, setAcknowledgedIds] = useState<string[]>([]);
+  const refreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSummaryState(summary);
   }, [summary]);
+
+  const refreshSummary = useCallback(async () => {
+    try {
+      const nextSummary = await fetchNotificationSummary();
+      setSummaryState(nextSummary);
+    } catch {
+      // Ignora falhas transitórias para não poluir a UI.
+    }
+  }, []);
 
   useEffect(() => {
     setAcknowledgedIds(readAcknowledgedIds());
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    const refresh = async () => {
-      try {
-        const nextSummary = await fetchNotificationSummary();
-        if (mounted) {
-          setSummaryState(nextSummary);
-        }
-      } catch {
-        // Ignora falhas transitórias para não poluir a UI.
-      }
-    };
-
-    const intervalId = window.setInterval(refresh, REFRESH_INTERVAL_MS);
+    const intervalId = window.setInterval(() => {
+      void refreshSummary();
+    }, REFRESH_INTERVAL_MS);
     const handleFocus = () => {
-      void refresh();
+      void refreshSummary();
     };
 
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
 
     return () => {
-      mounted = false;
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, []);
+  }, [refreshSummary]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (!["order.created", "order.updated", "order.status_changed", "order.deadline_changed", "order.assigned_changed", "notification.created"].includes(event.type)) return;
+      if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = window.setTimeout(() => {
+        void refreshSummary();
+      }, 160);
+    });
+  }, [refreshSummary, subscribe]);
 
   const acknowledgedSet = useMemo(() => new Set(acknowledgedIds), [acknowledgedIds]);
 
@@ -162,6 +172,7 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
       >
         <Bell className="h-4 w-4" />
         <span className="hidden sm:inline">Notificações</span>
+        <span className={`hidden md:inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${isConnected ? "text-[var(--success)]" : "text-[var(--text-tertiary)]"}`}>{isConnected ? "ao vivo" : "sync"}</span>
         {visibleSummary.total > 0 ? <span className="notification-counter">{visibleCount}</span> : null}
       </button>
 

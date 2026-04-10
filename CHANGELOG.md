@@ -1,5 +1,26 @@
 # Changelog
 
+## v5.2.0
+- aplicação da v4.7 com UI de auditoria dentro do detalhe da O.S. e nova tela administrativa global de auditoria
+- detalhe da O.S. agora separa Observações, Timeline e Auditoria em navegação própria, mantendo a trilha operacional distinta da rastreabilidade estruturada
+- nova página `/audit` com filtros por O.S., usuário, tipo de ação e período para leitura gerencial das mudanças
+- leitura de auditoria enriquecida com autor, campo alterado, valor anterior, valor novo, data e hora exatas
+- detalhe da ordem agora carrega eventos estruturados de auditoria junto do restante do contexto
+
+## v5.1.9
+- aplicação da v4.6 com base de auditoria forte separada da timeline operacional
+- criação da migration `database/14_audit_events.sql` com tabela própria para eventos de auditoria estruturados
+- inclusão da camada central `lib/audit.ts` para gravação reutilizável de auditoria por entidade
+- ações críticas de ordens agora registram auditoria estruturada para mudança de status, prazo, técnico responsável, equipe de apoio, finalização, reabertura e cancelamento
+- base de leitura de auditoria preparada em `lib/server-data/audit.ts` para futuras telas e consultas gerenciais
+
+## v5.1.8
+- aplicação da v4.5 com sincronização realtime nas telas principais usando SSE e provider central
+- ordens agora reagem a eventos de atualização, recarregando a fila filtrada e o drawer aberto sem F5
+- dashboard e central de notificações passaram a atualizar automaticamente quando a operação muda
+- presença de usuários agora pode atualizar a área administrativa sem ação manual através de bridge de realtime
+- contador e popover de notificações do topo agora recebem atualização imediata por eventos do sistema
+
 ## v5.1.6
 - aplicação da v4.3 na tela de usuários com leitura mais clara de presença, último login e última atividade
 - inclusão de filtro por presença, mantendo conta e perfil separados para análise mais precisa da equipe
@@ -62,6 +83,13 @@
 - mantém o fundo visual e a identidade sem excesso de informação
 
 # Changelog
+
+## v5.2.0
+- aplicação da v4.7 com UI de auditoria dentro do detalhe da O.S. e nova tela administrativa global de auditoria
+- detalhe da O.S. agora separa Observações, Timeline e Auditoria em navegação própria, mantendo a trilha operacional distinta da rastreabilidade estruturada
+- nova página `/audit` com filtros por O.S., usuário, tipo de ação e período para leitura gerencial das mudanças
+- leitura de auditoria enriquecida com autor, campo alterado, valor anterior, valor novo, data e hora exatas
+- detalhe da ordem agora carrega eventos estruturados de auditoria junto do restante do contexto
 
 ## v5.1.5
 - aplicação da v4.2 com base de presença real dos usuários internos

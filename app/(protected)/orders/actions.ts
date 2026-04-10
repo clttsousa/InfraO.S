@@ -3,9 +3,11 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import type { PoolClient } from "pg";
 import { redirect } from "next/navigation";
+import { writeOrderAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { toDateTimeLocalValue } from "@/lib/format";
+import { publishRealtimeEvent } from "@/lib/realtime";
 import { cleanText, ensureDateTime, ensureEnum, ensureUuid, normalizeUuid } from "@/lib/validation";
 import type { OrderPriorityDb, OrderStatusDb } from "@/types";
 
@@ -127,6 +129,12 @@ function revalidateOperationalViews() {
   revalidateTag("reports", "max");
 }
 
+function publishOrderRealtime(orderId: string, type: "order.created" | "order.updated" | "order.status_changed" | "order.deadline_changed" | "order.assigned_changed", payload?: Record<string, unknown>) {
+  publishRealtimeEvent({ type, scope: "orders", entityId: orderId, payload });
+  publishRealtimeEvent({ type: "notification.created", scope: "notifications", entityId: orderId, payload: { sourceType: type, ...payload } });
+}
+
+
 function isMissingSavedViewsTableError(error: unknown) {
   return error instanceof Error && /saved_order_views|does not exist|relation .* does not exist/i.test(error.message);
 }
@@ -205,6 +213,21 @@ export async function createServiceOrderAction(formData: FormData) {
       priority: payload.priority
     });
 
+    await writeOrderAuditEvent(client, {
+      serviceOrderId: orderId,
+      actorUserId: session.id,
+      actorName: session.name,
+      actionType: "order.created",
+      note: payload.rawInput ? "Cadastro realizado com apoio do parser por texto colado." : "Cadastro manual da O.S.",
+      metadata: {
+        orderNumber: payload.orderNumber,
+        technicianId: payload.technicianId,
+        supportTechnicianIds,
+        internalOwnerId: payload.internalOwnerId,
+        priority: payload.priority
+      }
+    });
+
     if (supportTechnicianIds.length) {
       const supportNameMap = await getTechnicianNameMap(client, supportTechnicianIds);
       const supportNames = supportTechnicianIds.map((id) => supportNameMap.get(id) ?? id);
@@ -213,6 +236,7 @@ export async function createServiceOrderAction(formData: FormData) {
 
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(orderId, "order.created", { priority: payload.priority, technicianId: payload.technicianId, internalOwnerId: payload.internalOwnerId });
     redirectTarget = `/orders?selected=${orderId}&success=${encodeMessage("O.S. cadastrada com sucesso.")}`;
   } catch (error) {
     await client.query("rollback");
@@ -268,6 +292,20 @@ export async function updateServiceOrderAction(formData: FormData) {
     if ((currentRow.technician_id ?? null) !== (payload.technicianId ?? null)) {
       const names = await getTechnicianNames(client, currentRow.technician_id, payload.technicianId);
       await insertLog(client, id, session.id, "Alterou o técnico responsável.", `${names.oldName ?? "Não definido"} → ${names.newName ?? "Não definido"}`, { technicianId: currentRow.technician_id }, { technicianId: payload.technicianId });
+      await writeOrderAuditEvent(client, {
+        serviceOrderId: id,
+        actorUserId: session.id,
+        actorName: session.name,
+        actionType: "order.assigned_changed",
+        fieldName: "technician_id",
+        oldValue: currentRow.technician_id,
+        newValue: payload.technicianId,
+        note: "Técnico responsável alterado.",
+        metadata: {
+          oldTechnicianName: names.oldName,
+          newTechnicianName: names.newName
+        }
+      });
     }
 
     const currentSupportKey = currentSupportTechnicianIds.slice().sort().join(",");
@@ -277,15 +315,46 @@ export async function updateServiceOrderAction(formData: FormData) {
       const oldNames = currentSupportTechnicianIds.map((supportId) => supportNameMap.get(supportId) ?? supportId);
       const newNames = supportTechnicianIds.map((supportId) => supportNameMap.get(supportId) ?? supportId);
       await insertLog(client, id, session.id, "Atualizou os técnicos de apoio.", `${oldNames.length ? oldNames.join(", ") : "Sem apoio"} → ${newNames.length ? newNames.join(", ") : "Sem apoio"}`, { supportTechnicianIds: currentSupportTechnicianIds }, { supportTechnicianIds });
+      await writeOrderAuditEvent(client, {
+        serviceOrderId: id,
+        actorUserId: session.id,
+        actorName: session.name,
+        actionType: "order.support_team_changed",
+        fieldName: "support_technician_ids",
+        oldValue: currentSupportTechnicianIds,
+        newValue: supportTechnicianIds,
+        note: "Equipe de apoio atualizada.",
+        metadata: {
+          oldSupportNames: oldNames,
+          newSupportNames: newNames
+        }
+      });
     }
 
     const currentDeadlineValue = currentRow.deadline_at ? toDateTimeLocalValue(currentRow.deadline_at) : null;
     if ((currentDeadlineValue ?? null) != (payload.deadlineAt ?? null)) {
       await insertLog(client, id, session.id, "Alterou o prazo da O.S.", `Prazo anterior: ${currentRow.deadline_at ?? "sem prazo"}. Novo prazo: ${payload.deadlineAt ?? "sem prazo"}.`, { deadlineAt: currentRow.deadline_at }, { deadlineAt: payload.deadlineAt });
+      await writeOrderAuditEvent(client, {
+        serviceOrderId: id,
+        actorUserId: session.id,
+        actorName: session.name,
+        actionType: "order.deadline_changed",
+        fieldName: "deadline_at",
+        oldValue: currentRow.deadline_at,
+        newValue: payload.deadlineAt,
+        note: "Prazo da ordem atualizado."
+      });
     }
 
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(id, "order.updated", { action: "edited" });
+    if ((currentRow.deadline_at ?? null) !== (payload.deadlineAt ?? null)) {
+      publishOrderRealtime(id, "order.deadline_changed", { action: "deadline_changed" });
+    }
+    if ((currentRow.technician_id ?? null) !== (payload.technicianId ?? null) || currentSupportTechnicianIds.slice().sort().join(",") !== supportTechnicianIds.slice().sort().join(",")) {
+      publishOrderRealtime(id, "order.assigned_changed", { action: "assigned_changed" });
+    }
     redirectTarget = appendMessage(redirectTo, "success", "O.S. atualizada com sucesso.");
   } catch (error) {
     await client.query("rollback");
@@ -319,8 +388,19 @@ export async function updateServiceOrderStatusAction(formData: FormData) {
 
     await client.query(`update service_orders set status = $2, updated_by_user_id = $3::uuid, updated_at = now(), last_status_changed_at = now(), last_status_changed_by_user_id = $3::uuid where id = $1`, [id, status, session.id]);
     await insertLog(client, id, session.id, "Alterou o status da O.S.", note || `Novo status: ${status}`, { status: current.rows[0].status }, { status });
+    await writeOrderAuditEvent(client, {
+      serviceOrderId: id,
+      actorUserId: session.id,
+      actorName: session.name,
+      actionType: "order.status_changed",
+      fieldName: "status",
+      oldValue: current.rows[0].status,
+      newValue: status,
+      note: note || "Status alterado manualmente."
+    });
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(id, "order.status_changed", { action: "status_changed", status });
     redirectTarget = appendMessage(redirectTo, "success", "Status atualizado com sucesso.");
   } catch (error) {
     await client.query("rollback");
@@ -348,8 +428,22 @@ export async function finalizeServiceOrderAction(formData: FormData) {
 
     await client.query(`update service_orders set status = 'FINALIZADA', finalized_at = now(), finalized_by_user_id = $2::uuid, closing_note = $3, updated_by_user_id = $2::uuid, updated_at = now(), last_status_changed_at = now(), last_status_changed_by_user_id = $2::uuid where id = $1`, [id, session.id, note]);
     await insertLog(client, id, session.id, "Finalizou a O.S.", note, { status: current.rows[0].status, finalizedAt: current.rows[0].finalized_at }, { status: "FINALIZADA", finalizedAt: "now" });
+    await writeOrderAuditEvent(client, {
+      serviceOrderId: id,
+      actorUserId: session.id,
+      actorName: session.name,
+      actionType: "order.finalized",
+      fieldName: "status",
+      oldValue: current.rows[0].status,
+      newValue: "FINALIZADA",
+      note,
+      metadata: {
+        previousFinalizedAt: current.rows[0].finalized_at
+      }
+    });
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(id, "order.status_changed", { action: "finalized", status: "FINALIZADA" });
     redirectTarget = appendMessage(redirectTo, "success", "O.S. finalizada com sucesso.");
   } catch (error) {
     await client.query("rollback");
@@ -375,8 +469,19 @@ export async function reopenServiceOrderAction(formData: FormData) {
 
     await client.query(`update service_orders set status = 'ABERTA', reopened_at = now(), reopened_by_user_id = $2::uuid, updated_by_user_id = $2::uuid, updated_at = now(), last_status_changed_at = now(), last_status_changed_by_user_id = $2::uuid, finalized_at = null, finalized_by_user_id = null, closing_note = null, canceled_at = null, canceled_by_user_id = null, cancellation_note = null where id = $1`, [id, session.id]);
     await insertLog(client, id, session.id, "Reabriu a O.S.", reason, { status: current.rows[0].status }, { status: "ABERTA" });
+    await writeOrderAuditEvent(client, {
+      serviceOrderId: id,
+      actorUserId: session.id,
+      actorName: session.name,
+      actionType: "order.reopened",
+      fieldName: "status",
+      oldValue: current.rows[0].status,
+      newValue: "ABERTA",
+      note: reason
+    });
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(id, "order.status_changed", { action: "reopened", status: "ABERTA" });
     redirectTarget = appendMessage(redirectTo, "success", "O.S. reaberta com sucesso.");
   } catch (error) {
     await client.query("rollback");
@@ -402,8 +507,19 @@ export async function cancelServiceOrderAction(formData: FormData) {
 
     await client.query(`update service_orders set status = 'CANCELADA', canceled_at = now(), canceled_by_user_id = $2::uuid, cancellation_note = $3, updated_by_user_id = $2::uuid, updated_at = now(), last_status_changed_at = now(), last_status_changed_by_user_id = $2::uuid where id = $1`, [id, session.id, reason]);
     await insertLog(client, id, session.id, "Cancelou a O.S.", reason, { status: current.rows[0].status }, { status: "CANCELADA" });
+    await writeOrderAuditEvent(client, {
+      serviceOrderId: id,
+      actorUserId: session.id,
+      actorName: session.name,
+      actionType: "order.canceled",
+      fieldName: "status",
+      oldValue: current.rows[0].status,
+      newValue: "CANCELADA",
+      note: reason
+    });
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(id, "order.status_changed", { action: "canceled", status: "CANCELADA" });
     redirectTarget = appendMessage(redirectTo, "success", "O.S. cancelada com sucesso.");
   } catch (error) {
     await client.query("rollback");
@@ -428,6 +544,7 @@ export async function addServiceOrderNoteAction(formData: FormData) {
     await insertLog(client, id, session.id, "Adicionou observação interna.", note);
     await client.query("commit");
     revalidateOperationalViews();
+    publishOrderRealtime(id, "order.updated", { action: "note_added" });
     redirectTarget = appendMessage(redirectTo, "success", "Observação adicionada com sucesso.");
   } catch (error) {
     await client.query("rollback");
