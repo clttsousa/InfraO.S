@@ -23,6 +23,7 @@ import {
   updateServiceOrderStatusAction
 } from "@/app/(protected)/orders/actions";
 import { PriorityBadge, StatusBadge } from "@/components/orders/order-status";
+import { OrderActionOverlay } from "@/components/orders/order-action-overlay";
 import { SupportTechnicianSelector } from "@/components/orders/support-technician-selector";
 import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
@@ -39,8 +40,7 @@ import {
   TextInput
 } from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_OPTIONS } from "@/lib/constants";
-import type { InternalUserDirectoryItem, ServiceOrderDetail, ServiceOrderLogItem, TechnicianDirectoryItem } from "@/types";
-import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
+import type { InternalUserItem, ServiceOrderDetail, ServiceOrderLogItem, TechnicianItem } from "@/types";
 
 function buildHref(baseHref: string, action?: string) {
   if (!action) return baseHref;
@@ -100,7 +100,7 @@ function DetailTimelineCard({ title, subtitle, note, when, tone, icon }: { title
   );
 }
 
-export function OrderDetailPanel({ order, technicians, internalUsers, action, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianDirectoryItem[]; internalUsers: InternalUserDirectoryItem[]; action?: string; baseHref: string; success?: string; error?: string; }) {
+export function OrderDetailPanel({ order, technicians, internalUsers, action, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianItem[]; internalUsers: InternalUserItem[]; action?: string; baseHref: string; success?: string; error?: string; }) {
   if (!order) {
     return <div className="p-6"><EmptyState compact title="Nenhuma O.S. selecionada" description="Selecione uma ordem na tabela para abrir o painel lateral de detalhes e operar sem sair da listagem." /></div>;
   }
@@ -113,18 +113,13 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
 
   return (
     <div className="relative space-y-6 p-6 animate-fadeIn">
-      {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
-      {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
+      {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
+      {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
 
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="app-eyebrow text-xs font-medium">Detalhe da O.S.</p>
-          <h2 className="app-title mt-1 text-[1.9rem] font-semibold leading-tight">O.S. {order.number}</h2>
-          <p className="app-text-secondary mt-1">Cliente: {order.clientName ?? "Sem cliente vinculado"}</p>
-        </div>
-        <ButtonLink href={closeHref} variant="ghost" size="sm" scroll={false} className="h-10 w-10 rounded-full p-0" aria-label="Fechar painel de detalhes">
-          <X className="h-4 w-4" />
-        </ButtonLink>
+      <div>
+        <p className="app-eyebrow text-xs font-medium">Detalhe da O.S.</p>
+        <h2 className="app-title mt-1 text-[1.9rem] font-semibold leading-tight">O.S. {order.number}</h2>
+        <p className="app-text-secondary mt-1">Cliente: {order.clientName ?? "Sem cliente vinculado"}</p>
       </div>
 
       {order.isLate ? <div className="alert-danger"><TriangleAlert className="h-4 w-4" />Prazo vencido. Esta O.S. está atrasada, mas o status real continua <span className="font-semibold">{order.rawStatus}</span>.</div> : null}
@@ -138,16 +133,16 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <ButtonLink href={buildHref(baseHref, "edit")} variant="secondary" scroll={false}><Pencil className="h-4 w-4" />Editar O.S.</ButtonLink>
-        {!canReopen ? <ButtonLink href={buildHref(baseHref, "status")} variant="secondary" scroll={false}><RefreshCw className="h-4 w-4" />Alterar status</ButtonLink> : null}
-        <ButtonLink href={buildHref(baseHref, "note")} variant="secondary" scroll={false}><MessageSquare className="h-4 w-4" />Adicionar observação</ButtonLink>
+        <ButtonLink href={buildHref(baseHref, "edit")} variant="secondary"><Pencil className="h-4 w-4" />Editar O.S.</ButtonLink>
+        {!canReopen ? <ButtonLink href={buildHref(baseHref, "status")} variant="secondary"><RefreshCw className="h-4 w-4" />Alterar status</ButtonLink> : null}
+        <ButtonLink href={buildHref(baseHref, "note")} variant="secondary"><MessageSquare className="h-4 w-4" />Adicionar observação</ButtonLink>
         {canFinishOrCancel ? (
           <>
-            <ButtonLink href={buildHref(baseHref, "finish")} scroll={false}><CheckCircle2 className="h-4 w-4" />Finalizar</ButtonLink>
-            <ButtonLink href={buildHref(baseHref, "cancel")} variant="danger" scroll={false}><Ban className="h-4 w-4" />Cancelar</ButtonLink>
+            <ButtonLink href={buildHref(baseHref, "finish")}><CheckCircle2 className="h-4 w-4" />Finalizar</ButtonLink>
+            <ButtonLink href={buildHref(baseHref, "cancel")} variant="danger"><Ban className="h-4 w-4" />Cancelar</ButtonLink>
           </>
         ) : null}
-        {canReopen ? <ButtonLink href={buildHref(baseHref, "reopen")} variant="secondary" scroll={false}><RotateCcw className="h-4 w-4" />Reabrir</ButtonLink> : null}
+        {canReopen ? <ButtonLink href={buildHref(baseHref, "reopen")} variant="secondary"><RotateCcw className="h-4 w-4" />Reabrir</ButtonLink> : null}
       </div>
 
       <Surface className="p-5">
@@ -193,17 +188,15 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
         {order.logs.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem histórico" description="Quando houver ações na ordem, a timeline ficará disponível aqui." /></div> : <div className="mt-4 space-y-3">{order.logs.map((log) => { const meta = getLogMeta(log); const Icon = meta.icon; return <DetailTimelineCard key={log.id} title={meta.label} subtitle={`${log.actor} · ${log.description}`} note={log.note} when={log.when} tone={meta.tone} icon={<Icon className="h-4 w-4" />} />; })}</div>}
       </Surface>
 
-      {action ? (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-black/45 p-4 backdrop-blur-sm">
-          <div className="flex min-h-full items-start justify-center py-2 md:py-8">
-            <div className="app-panel animate-scaleIn w-full max-w-2xl overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)] max-h-[calc(100vh-2rem)]">
-              <div className="sticky top-0 z-10 -mx-5 flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-4 pt-1">
-                <div>
-                  <p className="app-eyebrow text-xs font-medium">Ação rápida</p>
-                  <h3 className="app-title mt-1 text-xl font-semibold">{actionTitle(action)}</h3>
-                </div>
-                <ButtonLink href={closeHref} variant="ghost" size="sm" scroll={false} className="px-2.5 py-2"><X className="h-4 w-4" /></ButtonLink>
-              </div>
+      <OrderActionOverlay isOpen={Boolean(action)} closeHref={closeHref}>
+        <div className="app-panel animate-scaleIn relative z-[73] w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)]">
+          <div className="sticky top-0 z-10 -mx-5 flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-4 pt-1">
+            <div>
+              <p className="app-eyebrow text-xs font-medium">Ação rápida</p>
+              <h3 className="app-title mt-1 text-xl font-semibold">{actionTitle(action)}</h3>
+            </div>
+            <ButtonLink href={closeHref} variant="ghost" size="sm" className="px-2.5 py-2"><X className="h-4 w-4" /></ButtonLink>
+          </div>
 
               {action === "edit" ? (
                 <form id="order-edit-form" action={updateServiceOrderAction} className="mt-5 space-y-4">
@@ -218,7 +211,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                       <TextInput label="Usuário da abertura" name="openedBy" defaultValue={order.openedBy === "—" ? "" : order.openedBy} />
                       <TextInput label="Código do cliente" name="clientCode" defaultValue={order.clientCode ?? ""} />
                       <TextInput label="Nome do cliente" name="clientName" defaultValue={order.clientName ?? ""} />
-                      <TextInput label="Localização" name="locationLink" defaultValue={order.locationLink ?? ""} description="Aceita somente links http:// ou https:// seguros." />
+                      <TextInput label="Localização" name="locationLink" defaultValue={order.locationLink ?? ""} />
                       <div className="md:col-span-2"><TextInput label="Endereço" name="addressText" defaultValue={order.address ?? ""} /></div>
                       <div className="md:col-span-2"><TextAreaInput label="Descrição da abertura" name="openingDescription" defaultValue={order.openingDescriptionRaw} rows={4} required /></div>
                     </div>
@@ -235,7 +228,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Salvar com segurança</p><p className="field-hint">O histórico registra a edição principal e mudanças relevantes.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar alterações</SubmitButton><ButtonLink href={closeHref} variant="secondary" scroll={false}>Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar alterações</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -251,7 +244,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Mudança auditável</p><p className="field-hint">O sistema registra o status anterior e o novo status.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar status</SubmitButton><ButtonLink href={closeHref} variant="secondary" scroll={false}>Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar status</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -266,7 +259,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Nota interna</p><p className="field-hint">A observação entra na trilha da O.S. e ajuda no repasse entre times.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar observação</SubmitButton><ButtonLink href={closeHref} variant="secondary" scroll={false}>Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar observação</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -282,7 +275,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Fechamento auditável</p><p className="field-hint">A ordem passa a finalizada e pode ser reaberta depois, se necessário.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Finalizando...">Confirmar finalização</SubmitButton><ButtonLink href={closeHref} variant="secondary" scroll={false}>Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Finalizando...">Confirmar finalização</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -298,7 +291,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Reversão controlada</p><p className="field-hint">Finalização e cancelamento anteriores continuam preservados no histórico.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Reabrindo...">Confirmar reabertura</SubmitButton><ButtonLink href={closeHref} variant="secondary" scroll={false}>Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Reabrindo...">Confirmar reabertura</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -314,14 +307,12 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Cancelamento consciente</p><p className="field-hint">Use quando a ordem realmente não deve mais seguir em operação.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton variant="danger" pendingLabel="Cancelando...">Confirmar cancelamento</SubmitButton><ButtonLink href={closeHref} variant="secondary" scroll={false}>Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton variant="danger" pendingLabel="Cancelando...">Confirmar cancelamento</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
                   </ActionFooter>
                 </form>
               ) : null}
-            </div>
-          </div>
         </div>
-      ) : null}
+      </OrderActionOverlay>
     </div>
   );
 }

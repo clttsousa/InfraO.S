@@ -17,8 +17,6 @@ type ActivityRow = {
   actor_name: string | null;
   action_type: string;
   created_at: string;
-  service_order_id: string | null;
-  order_number: string | null;
 };
 
 type AlertIdRow = { notification_id: string };
@@ -68,10 +66,9 @@ async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
       limit 3
     `),
     query<ActivityRow>(`
-      select l.id, iu.full_name as actor_name, l.action_type, l.created_at, l.service_order_id::text as service_order_id, so.order_number
+      select l.id, iu.full_name as actor_name, l.action_type, l.created_at
       from service_order_logs l
       left join internal_users iu on iu.id = l.internal_user_id
-      left join service_orders so on so.id = l.service_order_id
       order by l.created_at desc
       limit 4
     `),
@@ -101,8 +98,7 @@ async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
       id: `late-${row.id}-${row.deadline_at ? formatNotificationDateKey(row.deadline_at) : 'sem-prazo'}`,
       title: `O.S. ${row.order_number} atrasada`,
       description: `${row.client_name ?? 'Sem cliente'} · prazo ${row.deadline_at ? formatDateTime(row.deadline_at) : 'não informado'}`,
-      href: `/orders?selected=${row.id}` ,
-      actionLabel: "Abrir O.S.",
+      href: `/orders?selected=${row.id}`,
       level: 'danger' as const,
       when: row.deadline_at ? formatDateTime(row.deadline_at) : undefined,
       category: 'late' as const
@@ -111,8 +107,7 @@ async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
       id: `today-${row.id}-${row.deadline_at ? formatNotificationDateKey(row.deadline_at) : 'sem-prazo'}`,
       title: `O.S. ${row.order_number} vence hoje`,
       description: `${row.client_name ?? 'Sem cliente'} · acompanhe antes do encerramento do dia`,
-      href: `/orders?selected=${row.id}` ,
-      actionLabel: "Abrir O.S.",
+      href: `/orders?selected=${row.id}`,
       level: 'warning' as const,
       when: row.deadline_at ? formatDateTime(row.deadline_at) : undefined,
       category: 'dueToday' as const
@@ -121,18 +116,16 @@ async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
       id: `stale-${row.id}-${formatNotificationDateKey(row.updated_at)}`,
       title: `O.S. ${row.order_number} sem atualização`,
       description: `${row.client_name ?? 'Sem cliente'} · última mudança em ${formatDateTime(row.updated_at)}`,
-      href: `/orders?selected=${row.id}` ,
-      actionLabel: "Abrir O.S.",
+      href: `/orders?selected=${row.id}`,
       level: 'info' as const,
       when: formatDateTime(row.updated_at),
       category: 'stale' as const
     })),
     ...activityRows.rows.map((row) => ({
       id: `activity-${row.id}`,
-      title: `${row.actor_name ?? 'Sistema'} movimentou ${row.order_number ? `a O.S. ${row.order_number}` : 'uma O.S.'}` ,
+      title: `${row.actor_name ?? 'Sistema'} movimentou uma O.S.`,
       description: row.action_type,
-      href: row.service_order_id ? `/orders?selected=${row.service_order_id}` : '/dashboard',
-      actionLabel: row.service_order_id ? 'Abrir ordem relacionada' : 'Abrir dashboard',
+      href: '/dashboard',
       level: 'success' as const,
       when: formatDateTime(row.created_at),
       category: 'activity' as const

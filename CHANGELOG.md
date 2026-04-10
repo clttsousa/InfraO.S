@@ -1,22 +1,20 @@
 # Changelog
 
-## v6.1.0
-- refatoração de `getServiceOrderDetail` para consolidar ordem, observações e logs em uma consulta agregada, reduzindo custo de abertura do detalhe
-- carregamento sob demanda na listagem de O.S.: técnicos agora usam diretório leve e usuários internos só são buscados quando a edição realmente precisa abrir seletores
-- nova camada de diretórios leves (`getTechnicianDirectory` / `getInternalUserDirectory`) para filtros, formulários e selects com menos peso que as listagens administrativas completas
-- exportação Excel das telas de ordens e relatórios alinhada ao próprio formulário de filtros, eliminando divergência entre UI e arquivo gerado
-- sparkline dos cards revisada com leitura simplificada em baixo volume para evitar percepção enganosa
-- leitura de env e pool em dev mais previsível com recálculo seguro quando variáveis mudam durante Fast Refresh
+## v5.1.3
+- aplicação da v3.9 na tela de ordens com abertura do detalhe apenas por seleção da O.S.
+- linha inteira e cards mobile agora funcionam como ponto principal de entrada, com hover mais claro e destaque visual forte da seleção
+- detalhe removido da lateral fixa e transformado em drawer lateral no desktop e tela cheia no mobile
+- fechamento do detalhe por clique fora, tecla Esc e botão dedicado, preservando filtros e contexto da URL com `selected=id`
+- tabela simplificada com menos poluição visual, concentrando ações principais dentro do detalhe
+- modal de ações rápidas agora também fecha por clique fora e Esc sem perder a ordem selecionada
 
-## v6.0.0
-- blindagem de produção focada em segurança, estabilidade e robustez operacional
-- correção do `package.json` com `engines.node` no nível correto e versão do projeto atualizada para `6.0.0`
-- pool PostgreSQL agora usa singleton estável também em produção, reduzindo recriações desnecessárias e risco de esgotamento de conexão
-- server actions críticas protegidas por validação centralizada de origem confiável (`origin` / `referer` vs `host` / `x-forwarded-host` / URLs conhecidas do ambiente)
-- `locationLink` agora aceita apenas URLs `http://` e `https://`, com sanitização reutilizável para parser, persistência, leitura e exportação
-- feedback de `success` / `error` por query string agora usa decode seguro com fallback, evitando quebra por `decodeURIComponent` inválido
-- remoção protegida de filtros salvos com validação de UUID antes do `DELETE`, sem erro bruto do PostgreSQL
-- rate limit de login mantido com banco como fonte principal e fallback em memória apenas como contingência, agora com log explícito quando o fallback é ativado
+## v5.1.2
+- aplicação da v3.8 visual na tela de ordens com header mais curto e foco maior na tabela
+- faixa de filtros compactada com busca principal no topo, atalhos rápidos e refinamento avançado mais enxuto
+- cards de status reduzidos para ocupar menos altura sem perder leitura operacional
+- bloco de filtros ativos simplificado com chips menores e ação de limpeza mais discreta
+- visões salvas transformadas em painel recolhível para liberar espaço acima da listagem
+- ajustes finos de espaçamento, textos e densidade visual para reduzir a sensação de dashboard pesado
 
 ## v5.1.1
 - correção de fuso horário nos campos de data/hora das O.S., interpretando `datetime-local` como horário operacional do Brasil (`America/Sao_Paulo`)
@@ -109,12 +107,3 @@
 - troca rápida de perfil com confirmação
 - configurações administrativas funcionais com persistência local no navegador
 - documentação, seeds e migrations revisadas para pré-produção
-
-## v6.2.0
-- painel lateral de O.S. refinado com comportamento em overlay no mobile, links com `scroll={false}` e fechamento rápido sem perda de contexto visual
-- formulários base (`TextInput`, `SelectInput`, `TextAreaInput`) com `id`, `aria-describedby`, `aria-invalid` e mensagens associadas para leitura por tecnologias assistivas
-- parser da nova O.S. agora exibe resumo visual do que foi reconhecido e do que ainda precisa de revisão manual
-- campos preenchidos automaticamente pelo parser recebem destaque visual leve para transmitir confiança operacional
-- paginação da fila de ordens ganhou atalhos de primeira/última página e campo “ir para página”
-- topbar e command palette agora aceitam busca direta por número de O.S.
-- notificações passaram a exibir CTA explícito e atividades recentes agora tentam abrir a ordem relacionada quando disponível

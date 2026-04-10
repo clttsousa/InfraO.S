@@ -3,9 +3,8 @@
 import { Bell, Menu, Plus, Search, Shield, LayoutDashboard, FileText, Users, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
 import type { SessionUser } from "@/lib/auth";
-import { Button } from "@/components/shared/ui";
+import { Button, ButtonLink } from "@/components/shared/ui";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { LogoutButton } from "@/components/shared/logout-button";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -29,9 +28,8 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
   const { isOpen, setIsOpen } = useCommandPalette();
   const { preferences } = useSystemPreferences();
   const router = useRouter();
-  const [orderSearch, setOrderSearch] = useState("");
 
-  const commands = useMemo(() => [
+  const commands = [
     { id: "dashboard", label: "Dashboard", description: "Ir para o resumo operacional", icon: <LayoutDashboard className="h-4 w-4" />, href: "/dashboard", shortcut: "⌘D" },
     { id: "new-order", label: "Nova O.S.", description: "Criar nova ordem de serviço", icon: <Plus className="h-4 w-4" />, href: "/orders/new", shortcut: "⌘N" },
     { id: "orders", label: "Ordens", description: "Abrir a listagem completa de ordens", icon: <FileText className="h-4 w-4" />, href: "/orders", shortcut: "⌘O" },
@@ -39,15 +37,7 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
     { id: "users", label: "Usuários", description: "Gerenciar equipe interna", icon: <Users className="h-4 w-4" />, href: "/users" },
     { id: "settings", label: "Configurações", description: "Preferências e área administrativa", icon: <Settings className="h-4 w-4" />, href: "/settings" },
     { id: "alerts", label: "Alertas", description: "Ver ordens críticas ou atrasadas", icon: <Bell className="h-4 w-4" />, action: () => router.push("/orders?lateOnly=1") }
-  ].filter((command) => (command.id === "users" || command.id === "settings" ? user.role === "ADMIN" : true)), [router, user.role]);
-
-  function submitOrderSearch(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const normalized = orderSearch.trim();
-    if (!normalized) return;
-    router.push(`/orders?q=${encodeURIComponent(normalized)}`);
-    setOrderSearch("");
-  }
+  ].filter((command) => (command.id === "users" || command.id === "settings" ? user.role === "ADMIN" : true));
 
   return (
     <>
@@ -64,34 +54,18 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
               </div>
             </div>
           </div>
-          <div className="flex w-full flex-col gap-2 xl:w-auto xl:flex-row xl:items-center">
-            <div className="flex w-full items-center gap-2 md:w-auto">
-              {preferences.showCommandPaletteHint ? (
-                <button type="button" onClick={() => setIsOpen(true)} className="command-hint-trigger app-surface-muted hidden items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 xl:inline-flex">
-                  <Search className="h-4 w-4 text-[var(--text-tertiary)]" />
-                  <span className="app-text-tertiary text-sm">Buscar ações</span>
-                  <span className="app-number rounded-md border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--text-tertiary)]">⌘ / Ctrl + K</span>
-                </button>
-              ) : null}
-              <NotificationBell summary={notifications} />
-              <ThemeToggle />
-              <Link href="/orders/new" className="flex-1 sm:flex-none"><Button className="w-full sm:w-auto">Nova O.S.</Button></Link>
-              <LogoutButton userName={user.name} />
-            </div>
-            <form onSubmit={submitOrderSearch} className="topbar-search-form flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)]/72 px-3 py-2 xl:min-w-[320px]">
-              <Search className="h-4 w-4 shrink-0 text-[var(--text-tertiary)]" />
-              <input
-                type="search"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="Buscar O.S. pelo número"
-                aria-label="Buscar ordem de serviço pelo número"
-                className="w-full border-0 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
-              />
-              <button type="submit" className="btn-base btn-ghost btn-sm" aria-label="Abrir ordem pesquisada">Ir</button>
-            </form>
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            {preferences.showCommandPaletteHint ? (
+              <button type="button" onClick={() => setIsOpen(true)} className="command-hint-trigger app-surface-muted hidden items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 xl:inline-flex">
+                <Search className="h-4 w-4 text-[var(--text-tertiary)]" />
+                <span className="app-text-tertiary text-sm">Buscar ações</span>
+                <span className="app-number rounded-md border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--text-tertiary)]">⌘ / Ctrl + K</span>
+              </button>
+            ) : null}
+            <NotificationBell summary={notifications} />
+            <ThemeToggle />
+            <Link href="/orders/new" className="flex-1 sm:flex-none"><Button className="w-full sm:w-auto">Nova O.S.</Button></Link>
+            <LogoutButton userName={user.name} />
           </div>
         </div>
       </header>

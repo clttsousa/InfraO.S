@@ -3,14 +3,13 @@ import { LoginForm } from "@/components/auth/login-form";
 import { FeedbackMessage } from "@/components/shared/ui";
 import { getPublicRuntimeChecks } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
-import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 export default async function LoginPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await getSessionUser();
   if (session) redirect("/dashboard");
 
   const params = (await searchParams) ?? {};
-  const success = typeof params.success === "string" ? decodeSearchParamMessage(params.success) : "";
+  const success = typeof params.success === "string" ? decodeURIComponent(params.success) : "";
   const envCheck = getPublicRuntimeChecks();
 
   return (

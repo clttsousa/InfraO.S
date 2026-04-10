@@ -1,7 +1,7 @@
 import { query } from "@/lib/db";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { isUuid } from "@/lib/validation";
-import type { InternalUserDirectoryItem, InternalUserItem, TechnicianDirectoryItem, TechnicianItem } from "@/types";
+import type { InternalUserItem, TechnicianItem } from "@/types";
 
 export async function getTechnicians(): Promise<TechnicianItem[]> {
   const result = await query<{
@@ -102,39 +102,4 @@ export async function getInternalUserById(id: string) {
   if (!row) return null;
 
   return { id: row.id, name: row.full_name, email: row.email, role: row.role, active: row.is_active };
-}
-
-
-export async function getTechnicianDirectory(): Promise<TechnicianDirectoryItem[]> {
-  const result = await query<{ id: string; full_name: string; is_active: boolean }>(`
-    select id, full_name, is_active
-    from technicians
-    order by full_name asc
-  `);
-
-  return result.rows.map((row) => ({
-    id: row.id,
-    name: row.full_name,
-    active: row.is_active
-  }));
-}
-
-export async function getInternalUserDirectory(): Promise<InternalUserDirectoryItem[]> {
-  const result = await query<{
-    id: string;
-    full_name: string;
-    role: "ADMIN" | "OPERADOR";
-    is_active: boolean;
-  }>(`
-    select id, full_name, role, is_active
-    from internal_users
-    order by full_name asc
-  `);
-
-  return result.rows.map((row) => ({
-    id: row.id,
-    name: row.full_name,
-    role: row.role,
-    active: row.is_active
-  }));
 }

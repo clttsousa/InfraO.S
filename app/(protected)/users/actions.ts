@@ -5,7 +5,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "@/lib/constants";
 import { query } from "@/lib/db";
-import { isTrustedServerActionRequest } from "@/lib/server-action-security";
 import { requireAdmin, requireSession } from "@/lib/session";
 import { ensureEmail, ensurePasswordStrength, ensureUuid } from "@/lib/validation";
 
@@ -17,11 +16,6 @@ function success(message: string) {
   revalidatePath("/users");
   revalidatePath("/settings");
   redirect(`/users?success=${encodeURIComponent(message)}`);
-}
-
-async function guardUserAction(fallbackPath: string) {
-  if (await isTrustedServerActionRequest()) return;
-  redirect(`${fallbackPath}?error=${encodeURIComponent("Solicitação bloqueada por segurança. Recarregue a página e tente novamente.")}`);
 }
 
 async function ensureLastAdminIsPreserved(userId: string, nextRole?: string, nextActive?: boolean) {
@@ -38,7 +32,6 @@ async function ensureLastAdminIsPreserved(userId: string, nextRole?: string, nex
 }
 
 export async function createInternalUserAction(formData: FormData) {
-  await guardUserAction("/users");
   await requireAdmin();
   const fullName = String(formData.get("fullName") ?? "").trim();
   const email = ensureEmail(String(formData.get("email") ?? ""));
@@ -60,7 +53,6 @@ export async function createInternalUserAction(formData: FormData) {
 }
 
 export async function updateInternalUserAction(formData: FormData) {
-  await guardUserAction("/users");
   const session = await requireAdmin();
   const id = ensureUuid(String(formData.get("id") ?? ""), "Usuário");
   const fullName = String(formData.get("fullName") ?? "").trim();
@@ -84,7 +76,6 @@ export async function updateInternalUserAction(formData: FormData) {
 
 
 export async function updateInternalUserRoleAction(formData: FormData) {
-  await guardUserAction("/users");
   await requireAdmin();
   const id = ensureUuid(String(formData.get("id") ?? ""), "Usuário");
   const fullName = String(formData.get("fullName") ?? "").trim();
@@ -99,7 +90,6 @@ export async function updateInternalUserRoleAction(formData: FormData) {
 }
 
 export async function toggleInternalUserAction(formData: FormData) {
-  await guardUserAction("/users");
   const session = await requireAdmin();
   const id = ensureUuid(String(formData.get("id") ?? ""), "Usuário");
   const nextActive = String(formData.get("nextActive") ?? "false") === "true";
@@ -111,7 +101,6 @@ export async function toggleInternalUserAction(formData: FormData) {
 }
 
 export async function resetInternalUserPasswordAction(formData: FormData) {
-  await guardUserAction("/users");
   await requireAdmin();
   const id = ensureUuid(String(formData.get("id") ?? ""), "Usuário");
   const newPassword = ensurePasswordStrength(String(formData.get("newPassword") ?? ""));
@@ -121,7 +110,6 @@ export async function resetInternalUserPasswordAction(formData: FormData) {
 }
 
 export async function changeOwnPasswordAction(formData: FormData) {
-  await guardUserAction("/profile");
   const session = await requireSession();
   const currentPassword = ensurePasswordStrength(String(formData.get("currentPassword") ?? ""));
   const newPassword = ensurePasswordStrength(String(formData.get("newPassword") ?? ""));

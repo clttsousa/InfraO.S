@@ -1,7 +1,6 @@
 import * as XLSX from "xlsx";
 import { formatDateTime, formatHours } from "@/lib/format";
 import { mapReportStatusLabel } from "@/lib/data";
-import { sanitizeExternalHttpUrl } from "@/lib/url-safety";
 import type { ReportsData, ServiceOrderItem } from "@/types";
 
 export function createOrdersWorkbook(orders: ServiceOrderItem[]) {
@@ -10,7 +9,7 @@ export function createOrdersWorkbook(orders: ServiceOrderItem[]) {
     Cliente: order.clientName ?? "Sem cliente",
     "Código do cliente": order.clientCode ?? "",
     Endereço: order.address ?? "",
-    Localização: sanitizeExternalHttpUrl(order.locationLink) ?? "",
+    Localização: order.locationLink ?? "",
     "Técnico principal": order.assignedTechnician,
     "Técnicos de apoio": order.supportTechnicians.map((item) => item.name).join(", ") || "",
     "Equipe resumida": order.teamSummary,

@@ -1,21 +1,10 @@
 import { parseBrazilianDateTimeToIso } from "@/lib/format";
-import type { ParsedServiceOrderInput, ParserFieldFeedback } from "@/types";
+import type { ParsedServiceOrderInput } from "@/types";
 
 function cleanValue(value?: string | null) {
   const cleaned = value?.trim();
   return cleaned ? cleaned : undefined;
 }
-
-const PARSER_FIELD_LABELS: Array<{ key: keyof ParsedServiceOrderInput; label: string }> = [
-  { key: "orderNumber", label: "Número da O.S." },
-  { key: "openedAt", label: "Data de abertura" },
-  { key: "openedBy", label: "Usuário da abertura" },
-  { key: "openingDescription", label: "Descrição" },
-  { key: "clientCode", label: "Código do cliente" },
-  { key: "clientName", label: "Nome do cliente" },
-  { key: "address", label: "Endereço" },
-  { key: "locationLink", label: "Localização" }
-];
 
 export function parseServiceOrderText(rawText: string): ParsedServiceOrderInput {
   const text = rawText.replace(/\r/g, "").trim();
@@ -95,13 +84,4 @@ export function parseServiceOrderText(rawText: string): ParsedServiceOrderInput 
     address,
     locationLink
   };
-}
-
-export function buildParserFeedback(parsed: ParsedServiceOrderInput): ParserFieldFeedback[] {
-  return PARSER_FIELD_LABELS.map((field) => ({
-    key: field.key,
-    label: field.label,
-    value: parsed[field.key],
-    status: parsed[field.key] ? "recognized" : "missing"
-  }));
 }

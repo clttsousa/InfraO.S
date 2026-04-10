@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import type { TechnicianDirectoryItem } from "@/types";
+import type { TechnicianItem } from "@/types";
 
 export function SupportTechnicianSelector({
   technicians,
@@ -8,7 +8,7 @@ export function SupportTechnicianSelector({
   description = "Marque os técnicos que também vão atuar nesta O.S. Se marcar o mesmo técnico do responsável principal, ele continua apenas como principal.",
   name = "supportTechnicianIds"
 }: {
-  technicians: TechnicianDirectoryItem[];
+  technicians: TechnicianItem[];
   selectedIds?: string[];
   label?: string;
   description?: string;

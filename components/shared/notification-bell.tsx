@@ -213,7 +213,6 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
                           <div className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary)]">{item.title}</div>
                           <div className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{item.description}</div>
                           {item.when ? <div className="mt-1 text-xs text-[var(--text-tertiary)]">{item.when}</div> : null}
-                          <div className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-[var(--primary)]">{item.actionLabel ?? "Abrir contexto"} <span aria-hidden="true">→</span></div>
                         </div>
                       </div>
                     </Link>
