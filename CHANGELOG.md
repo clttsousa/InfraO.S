@@ -1,5 +1,8 @@
 # Changelog
 
+## v5.2.1
+- hotfix de tipagem em `components/audit/audit-event-list.tsx` com anotação explícita de retorno em `formatJsonValue` para corrigir o build do Next.js/TypeScript
+
 ## v5.2.0
 - aplicação da v4.7 com UI de auditoria dentro do detalhe da O.S. e nova tela administrativa global de auditoria
 - detalhe da O.S. agora separa Observações, Timeline e Auditoria em navegação própria, mantendo a trilha operacional distinta da rastreabilidade estruturada

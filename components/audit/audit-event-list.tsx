@@ -13,7 +13,7 @@ import {
 import { EmptyState } from "@/components/shared/ui";
 import type { AuditEventItem } from "@/types";
 
-function formatJsonValue(value: unknown) {
+function formatJsonValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
