@@ -1,5 +1,8 @@
 # Changelog
 
+## v5.2.2
+- hotfix de tipagem em `lib/server-data/shared.ts`, garantindo que `mapOrderDetail` retorne `auditEvents: []` por padrão para satisfazer o tipo `ServiceOrderDetail`
+
 ## v5.2.1
 - hotfix de tipagem em `components/audit/audit-event-list.tsx` com anotação explícita de retorno em `formatJsonValue` para corrigir o build do Next.js/TypeScript
 

@@ -204,7 +204,8 @@ export function mapOrderDetail(
     openedAtInput: toDateTimeLocalValue(row.opened_at),
     deadlineInput: toDateTimeLocalValue(row.deadline_at),
     notes,
-    logs
+    logs,
+    auditEvents: []
   };
 }
 
