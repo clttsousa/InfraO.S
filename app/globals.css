@@ -900,3 +900,46 @@ html[data-emphasize-alerts="1"] .alert-emphasis-stale { box-shadow: inset 3px 0 
 @media (max-width: 767px) {
   .order-detail-drawer { border-radius: 0; border-left-width: 0; border-top-width: 1px; }
 }
+
+
+.user-card { border-color: color-mix(in srgb, var(--border) 92%, transparent); }
+.user-date-meta {
+  display: grid;
+  gap: 0.28rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--surface-muted) 78%, var(--surface));
+  padding: 0.7rem 0.85rem;
+}
+.user-date-meta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+.user-date-meta-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+.presence-pill { position: relative; padding-left: 0.58rem; }
+.presence-dot {
+  display: inline-flex;
+  height: 0.46rem;
+  width: 0.46rem;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 22%, transparent);
+}
+.presence-pill-online .presence-dot { animation: presencePulse 2s ease-in-out infinite; }
+.presence-pill-away .presence-dot { opacity: 0.9; }
+@keyframes presencePulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 24%, transparent); }
+  70% { box-shadow: 0 0 0 0.45rem color-mix(in srgb, currentColor 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 0%, transparent); }
+}

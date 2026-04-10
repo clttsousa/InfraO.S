@@ -1,16 +1,9 @@
 "use client";
 import { useMemo } from "react";
 import { AlertTriangle, CalendarClock, ChevronRight, TimerReset } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { PriorityBadge, StatusBadge } from "@/components/orders/order-status";
 import { EmptyState, Surface } from "@/components/shared/ui";
 import type { ServiceOrderItem } from "@/types";
-
-function createRowHref(baseQueryString: string, orderId: string) {
-  const url = new URLSearchParams(baseQueryString);
-  url.set("selected", orderId);
-  return `/orders?${url.toString()}`;
-}
 
 function isRecentlyUpdated(order: ServiceOrderItem) {
   if (!order.updatedAtIso) return false;
@@ -39,7 +32,7 @@ function OrderAlertSummary({ order }: { order: ServiceOrderItem }) {
   );
 }
 
-function OrderMobileCard({ order, href, isSelected, onOpen }: { order: ServiceOrderItem; href: string; isSelected: boolean; onOpen: () => void }) {
+function OrderMobileCard({ order, isSelected, onOpen }: { order: ServiceOrderItem; isSelected: boolean; onOpen: () => void }) {
   const toneClass = order.isLate ? "alert-emphasis-late" : order.isDueToday ? "alert-emphasis-due" : order.isStale ? "alert-emphasis-stale" : "";
 
   return (
@@ -49,7 +42,6 @@ function OrderMobileCard({ order, href, isSelected, onOpen }: { order: ServiceOr
       aria-pressed={isSelected}
       aria-label={`Abrir detalhes da ordem ${order.number}`}
       className={`order-card order-card-button app-surface animate-slideInUp w-full p-4 text-left ${toneClass} ${isSelected ? "table-row-selected" : ""}`}
-      data-href={href}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -82,12 +74,11 @@ function OrderMobileCard({ order, href, isSelected, onOpen }: { order: ServiceOr
   );
 }
 
-export function OrderInteractiveList({ baseQueryString, items, selectedId }: { baseQueryString: string; items: ServiceOrderItem[]; selectedId?: string }) {
-  const router = useRouter();
+export function OrderInteractiveList({ items, selectedId, onSelect }: { items: ServiceOrderItem[]; selectedId?: string; onSelect: (orderId: string) => void }) {
   const orders = useMemo(() => items, [items]);
 
   const openOrder = (orderId: string) => {
-    router.push(createRowHref(baseQueryString, orderId), { scroll: false });
+    onSelect(orderId);
   };
 
   if (!orders.length) {
@@ -110,8 +101,7 @@ export function OrderInteractiveList({ baseQueryString, items, selectedId }: { b
     <>
       <div className="space-y-4 xl:hidden">
         {orders.map((order) => {
-          const href = createRowHref(baseQueryString, order.id);
-          return <OrderMobileCard key={order.id} order={order} href={href} isSelected={selectedId === order.id} onOpen={() => openOrder(order.id)} />;
+          return <OrderMobileCard key={order.id} order={order} isSelected={selectedId === order.id} onOpen={() => openOrder(order.id)} />;
         })}
       </div>
 
@@ -131,15 +121,13 @@ export function OrderInteractiveList({ baseQueryString, items, selectedId }: { b
             </thead>
             <tbody>
               {orders.map((order) => {
-                const href = createRowHref(baseQueryString, order.id);
                 return (
                   <tr
                     key={order.id}
                     className={getRowClass(order, selectedId)}
                     tabIndex={0}
                     aria-selected={selectedId === order.id}
-                    data-href={href}
-                    onClick={() => openOrder(order.id)}
+                                  onClick={() => openOrder(order.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();

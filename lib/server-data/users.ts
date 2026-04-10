@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { PRESENCE_AWAY_WINDOW_MINUTES, PRESENCE_ONLINE_WINDOW_MINUTES, getPresenceLabel } from "@/lib/presence";
 import { isUuid } from "@/lib/validation";
 import type { InternalUserItem, TechnicianItem } from "@/types";
 
@@ -73,11 +74,28 @@ export async function getInternalUsers(): Promise<InternalUserItem[]> {
     role: "ADMIN" | "OPERADOR";
     is_active: boolean;
     last_login_at: string | null;
+    last_seen_at: string | null;
+    presence_status: "ONLINE" | "AUSENTE" | "OFFLINE";
     created_at: string;
   }>(`
-    select id, full_name, email, role, is_active, last_login_at, created_at
+    select
+      id,
+      full_name,
+      email,
+      role,
+      is_active,
+      last_login_at,
+      last_seen_at,
+      case
+        when is_active = false then 'OFFLINE'
+        when last_seen_at is null then 'OFFLINE'
+        when last_seen_at >= now() - make_interval(mins => ${PRESENCE_ONLINE_WINDOW_MINUTES}) then 'ONLINE'
+        when last_seen_at >= now() - make_interval(mins => ${PRESENCE_AWAY_WINDOW_MINUTES}) then 'AUSENTE'
+        else 'OFFLINE'
+      end as presence_status,
+      created_at
     from internal_users
-    order by full_name asc
+    order by last_seen_at desc nulls last, last_login_at desc nulls last, full_name asc
   `);
 
   return result.rows.map((row) => ({
@@ -87,6 +105,12 @@ export async function getInternalUsers(): Promise<InternalUserItem[]> {
     role: row.role,
     active: row.is_active,
     lastAccess: formatDateTime(row.last_login_at),
+    lastLogin: formatDateTime(row.last_login_at),
+    lastActivity: formatDateTime(row.last_seen_at),
+    lastLoginAtIso: row.last_login_at,
+    lastSeenAtIso: row.last_seen_at,
+    presenceStatus: row.presence_status,
+    presenceLabel: getPresenceLabel(row.presence_status),
     createdAt: formatDate(row.created_at)
   }));
 }

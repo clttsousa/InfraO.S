@@ -4,8 +4,28 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export function OrderDetailDrawer({ children, closeHref, isOpen, isActionOpen = false }: { children: ReactNode; closeHref: string; isOpen: boolean; isActionOpen?: boolean }) {
+export function OrderDetailDrawer({
+  children,
+  closeHref = "/orders",
+  isOpen,
+  isActionOpen = false,
+  onClose,
+}: {
+  children: ReactNode;
+  closeHref?: string;
+  isOpen: boolean;
+  isActionOpen?: boolean;
+  onClose?: () => void;
+}) {
   const router = useRouter();
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    router.push(closeHref, { scroll: false });
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -16,7 +36,7 @@ export function OrderDetailDrawer({ children, closeHref, isOpen, isActionOpen = 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !isActionOpen) {
         event.preventDefault();
-        router.push(closeHref, { scroll: false });
+        handleClose();
       }
     };
 
@@ -25,7 +45,7 @@ export function OrderDetailDrawer({ children, closeHref, isOpen, isActionOpen = 
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeHref, isActionOpen, isOpen, router]);
+  }, [closeHref, isActionOpen, isOpen]);
 
   if (!isOpen) return null;
 
@@ -35,7 +55,7 @@ export function OrderDetailDrawer({ children, closeHref, isOpen, isActionOpen = 
         type="button"
         aria-label="Fechar detalhes"
         className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-        onClick={() => router.push(closeHref, { scroll: false })}
+        onClick={handleClose}
       />
       <div className="absolute inset-0 flex items-end justify-end md:items-stretch md:p-4">
         <section
@@ -46,7 +66,7 @@ export function OrderDetailDrawer({ children, closeHref, isOpen, isActionOpen = 
             type="button"
             aria-label="Fechar detalhes"
             className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[color:var(--surface)]/92 text-[var(--text-secondary)] shadow-[var(--shadow-sm)] transition hover:-translate-y-0.5 hover:text-[var(--text-primary)]"
-            onClick={() => router.push(closeHref, { scroll: false })}
+            onClick={handleClose}
           >
             <X className="h-4 w-4" />
           </button>

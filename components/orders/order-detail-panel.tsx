@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import {
   Ban,
@@ -28,7 +30,7 @@ import { SupportTechnicianSelector } from "@/components/orders/support-technicia
 import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import {
-  ButtonLink,
+  Button,
   EmptyState,
   FeedbackMessage,
   FormHint,
@@ -100,7 +102,7 @@ function DetailTimelineCard({ title, subtitle, note, when, tone, icon }: { title
   );
 }
 
-export function OrderDetailPanel({ order, technicians, internalUsers, action, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianItem[]; internalUsers: InternalUserItem[]; action?: string; baseHref: string; success?: string; error?: string; }) {
+export function OrderDetailPanel({ order, technicians, internalUsers, action, onActionChange, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianItem[]; internalUsers: InternalUserItem[]; action?: string; onActionChange?: (action?: string) => void; baseHref: string; success?: string; error?: string; }) {
   if (!order) {
     return <div className="p-6"><EmptyState compact title="Nenhuma O.S. selecionada" description="Selecione uma ordem na tabela para abrir o painel lateral de detalhes e operar sem sair da listagem." /></div>;
   }
@@ -108,6 +110,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
   const activeTechnicians = technicians.filter((item) => item.active);
   const activeUsers = internalUsers.filter((item) => item.active);
   const closeHref = closeActionHref(baseHref);
+  const closeAction = () => onActionChange?.(undefined);
   const canReopen = order.rawStatus === "FINALIZADA" || order.rawStatus === "CANCELADA";
   const canFinishOrCancel = order.rawStatus !== "FINALIZADA" && order.rawStatus !== "CANCELADA";
 
@@ -133,16 +136,16 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <ButtonLink href={buildHref(baseHref, "edit")} variant="secondary"><Pencil className="h-4 w-4" />Editar O.S.</ButtonLink>
-        {!canReopen ? <ButtonLink href={buildHref(baseHref, "status")} variant="secondary"><RefreshCw className="h-4 w-4" />Alterar status</ButtonLink> : null}
-        <ButtonLink href={buildHref(baseHref, "note")} variant="secondary"><MessageSquare className="h-4 w-4" />Adicionar observação</ButtonLink>
+        <Button type="button" variant="secondary" onClick={() => onActionChange?.("edit")}><Pencil className="h-4 w-4" />Editar O.S.</Button>
+        {!canReopen ? <Button type="button" variant="secondary" onClick={() => onActionChange?.("status")}><RefreshCw className="h-4 w-4" />Alterar status</Button> : null}
+        <Button type="button" variant="secondary" onClick={() => onActionChange?.("note")}><MessageSquare className="h-4 w-4" />Adicionar observação</Button>
         {canFinishOrCancel ? (
           <>
-            <ButtonLink href={buildHref(baseHref, "finish")}><CheckCircle2 className="h-4 w-4" />Finalizar</ButtonLink>
-            <ButtonLink href={buildHref(baseHref, "cancel")} variant="danger"><Ban className="h-4 w-4" />Cancelar</ButtonLink>
+            <Button type="button" onClick={() => onActionChange?.("finish")}><CheckCircle2 className="h-4 w-4" />Finalizar</Button>
+            <Button type="button" variant="danger" onClick={() => onActionChange?.("cancel")}><Ban className="h-4 w-4" />Cancelar</Button>
           </>
         ) : null}
-        {canReopen ? <ButtonLink href={buildHref(baseHref, "reopen")} variant="secondary"><RotateCcw className="h-4 w-4" />Reabrir</ButtonLink> : null}
+        {canReopen ? <Button type="button" variant="secondary" onClick={() => onActionChange?.("reopen")}><RotateCcw className="h-4 w-4" />Reabrir</Button> : null}
       </div>
 
       <Surface className="p-5">
@@ -188,14 +191,14 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
         {order.logs.length === 0 ? <div className="mt-4"><EmptyState compact title="Sem histórico" description="Quando houver ações na ordem, a timeline ficará disponível aqui." /></div> : <div className="mt-4 space-y-3">{order.logs.map((log) => { const meta = getLogMeta(log); const Icon = meta.icon; return <DetailTimelineCard key={log.id} title={meta.label} subtitle={`${log.actor} · ${log.description}`} note={log.note} when={log.when} tone={meta.tone} icon={<Icon className="h-4 w-4" />} />; })}</div>}
       </Surface>
 
-      <OrderActionOverlay isOpen={Boolean(action)} closeHref={closeHref}>
+      <OrderActionOverlay isOpen={Boolean(action)} closeHref={closeHref} onClose={closeAction}>
         <div className="app-panel animate-scaleIn relative z-[73] w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)]">
           <div className="sticky top-0 z-10 -mx-5 flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-4 pt-1">
             <div>
               <p className="app-eyebrow text-xs font-medium">Ação rápida</p>
               <h3 className="app-title mt-1 text-xl font-semibold">{actionTitle(action)}</h3>
             </div>
-            <ButtonLink href={closeHref} variant="ghost" size="sm" className="px-2.5 py-2"><X className="h-4 w-4" /></ButtonLink>
+            <Button type="button" variant="ghost" size="sm" className="px-2.5 py-2" onClick={closeAction}><X className="h-4 w-4" /></Button>
           </div>
 
               {action === "edit" ? (
@@ -228,7 +231,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Salvar com segurança</p><p className="field-hint">O histórico registra a edição principal e mudanças relevantes.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar alterações</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar alterações</SubmitButton><Button type="button" variant="secondary" onClick={closeAction}>Cancelar</Button></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -244,7 +247,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Mudança auditável</p><p className="field-hint">O sistema registra o status anterior e o novo status.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar status</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar status</SubmitButton><Button type="button" variant="secondary" onClick={closeAction}>Cancelar</Button></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -259,7 +262,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Nota interna</p><p className="field-hint">A observação entra na trilha da O.S. e ajuda no repasse entre times.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar observação</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Salvando...">Salvar observação</SubmitButton><Button type="button" variant="secondary" onClick={closeAction}>Cancelar</Button></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -275,7 +278,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Fechamento auditável</p><p className="field-hint">A ordem passa a finalizada e pode ser reaberta depois, se necessário.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Finalizando...">Confirmar finalização</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Finalizando...">Confirmar finalização</SubmitButton><Button type="button" variant="secondary" onClick={closeAction}>Cancelar</Button></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -291,7 +294,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Reversão controlada</p><p className="field-hint">Finalização e cancelamento anteriores continuam preservados no histórico.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Reabrindo...">Confirmar reabertura</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton pendingLabel="Reabrindo...">Confirmar reabertura</SubmitButton><Button type="button" variant="secondary" onClick={closeAction}>Cancelar</Button></div>
                   </ActionFooter>
                 </form>
               ) : null}
@@ -307,7 +310,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, ba
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Cancelamento consciente</p><p className="field-hint">Use quando a ordem realmente não deve mais seguir em operação.</p></div>
-                    <div className="flex flex-wrap gap-2"><SubmitButton variant="danger" pendingLabel="Cancelando...">Confirmar cancelamento</SubmitButton><ButtonLink href={closeHref} variant="secondary">Cancelar</ButtonLink></div>
+                    <div className="flex flex-wrap gap-2"><SubmitButton variant="danger" pendingLabel="Cancelando...">Confirmar cancelamento</SubmitButton><Button type="button" variant="secondary" onClick={closeAction}>Cancelar</Button></div>
                   </ActionFooter>
                 </form>
               ) : null}

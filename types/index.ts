@@ -18,6 +18,7 @@ export type OrderStatus =
 export type OrderPriorityDb = "BAIXA" | "MEDIA" | "ALTA" | "URGENTE";
 export type OrderPriority = "Baixa" | "Média" | "Alta" | "Urgente";
 export type UserRole = "ADMIN" | "OPERADOR";
+export type PresenceStatus = "ONLINE" | "AUSENTE" | "OFFLINE";
 
 export type InternalUserItem = {
   id: string;
@@ -26,6 +27,12 @@ export type InternalUserItem = {
   role: UserRole;
   active: boolean;
   lastAccess: string;
+  lastLogin: string;
+  lastActivity: string;
+  lastLoginAtIso?: string | null;
+  lastSeenAtIso?: string | null;
+  presenceStatus: PresenceStatus;
+  presenceLabel: string;
   createdAt: string;
 };
 

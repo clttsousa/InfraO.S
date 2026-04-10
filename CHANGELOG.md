@@ -1,5 +1,28 @@
 # Changelog
 
+## v5.1.6
+- aplicação da v4.3 na tela de usuários com leitura mais clara de presença, último login e última atividade
+- inclusão de filtro por presença, mantendo conta e perfil separados para análise mais precisa da equipe
+- ordenação por atividade recente na listagem de usuários, priorizando quem esteve ativo por último
+- badges de presença refinados para online, ausente e offline, com destaque visual mais forte para online
+- cards mobile e tabela desktop reorganizados para facilitar a leitura rápida de data, hora e status operacional
+
+## v5.1.5
+- aplicação da v4.2 com base de presença real dos usuários internos
+- inclusão da coluna `last_seen_at` e script de migração para distinguir último login de última atividade
+- heartbeat automático nas áreas protegidas para atualizar presença por foco, navegação, atividade e intervalos regulares
+- endpoint dedicado de presença para registrar atividade sem depender de refresh manual
+- usuários agora passam a ter status derivado de presença (`Online`, `Ausente`, `Offline`) com base no `last_seen_at`
+- tela de usuários preparada para exibir último login, última atividade e presença atual com segurança
+
+## v5.1.4
+- aplicação da v3.9.1 na tela de ordens com drawer abrindo e fechando instantaneamente no client, sem depender do rerender completo da página
+- sincronização da seleção com `selected=id` e `action=` na URL via history state para manter contexto sem travar a UX
+- carregamento sob demanda do detalhe por API dedicada, com cache em memória e skeleton enquanto a O.S. é buscada
+- painel de detalhe e overlay de ações rápidas agora operam localmente, incluindo fechamento imediato por clique fora, botão e tecla Esc
+- página de ordens deixa de consultar o detalhe completo no render principal, reduzindo o peso de abrir e fechar a lateral
+- ajuste do `tsconfig` para `ignoreDeprecations: "5.0"`, evitando o valor inválido que bloqueava o comando de typecheck
+
 ## v5.1.3
 - aplicação da v3.9 na tela de ordens com abertura do detalhe apenas por seleção da O.S.
 - linha inteira e cards mobile agora funcionam como ponto principal de entrada, com hover mais claro e destaque visual forte da seleção
@@ -39,6 +62,14 @@
 - mantém o fundo visual e a identidade sem excesso de informação
 
 # Changelog
+
+## v5.1.5
+- aplicação da v4.2 com base de presença real dos usuários internos
+- inclusão da coluna `last_seen_at` e script de migração para distinguir último login de última atividade
+- heartbeat automático nas áreas protegidas para atualizar presença por foco, navegação, atividade e intervalos regulares
+- endpoint dedicado de presença para registrar atividade sem depender de refresh manual
+- usuários agora passam a ter status derivado de presença (`Online`, `Ausente`, `Offline`) com base no `last_seen_at`
+- tela de usuários preparada para exibir último login, última atividade e presença atual com segurança
 
 ## v5.0.2
 - refatoração completa da página de login com visual mais moderno, menos ruído e melhor hierarquia visual

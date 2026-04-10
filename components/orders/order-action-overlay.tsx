@@ -3,8 +3,26 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export function OrderActionOverlay({ children, closeHref, isOpen }: { children: ReactNode; closeHref: string; isOpen: boolean }) {
+export function OrderActionOverlay({
+  children,
+  closeHref = "/orders",
+  isOpen,
+  onClose,
+}: {
+  children: ReactNode;
+  closeHref?: string;
+  isOpen: boolean;
+  onClose?: () => void;
+}) {
   const router = useRouter();
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    router.push(closeHref, { scroll: false });
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -12,13 +30,13 @@ export function OrderActionOverlay({ children, closeHref, isOpen }: { children: 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        router.push(closeHref, { scroll: false });
+        handleClose();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeHref, isOpen, router]);
+  }, [closeHref, isOpen]);
 
   if (!isOpen) return null;
 
@@ -28,7 +46,7 @@ export function OrderActionOverlay({ children, closeHref, isOpen }: { children: 
         type="button"
         aria-label="Fechar ação"
         className="absolute inset-0 bg-black/45"
-        onClick={() => router.push(closeHref, { scroll: false })}
+        onClick={handleClose}
       />
       <div className="relative flex min-h-full items-start justify-center py-2 md:py-8">{children}</div>
     </div>

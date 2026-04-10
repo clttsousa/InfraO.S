@@ -2,16 +2,14 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, Download, Save, TimerReset, Trash2 } from "lucide-react";
 import { deleteOrderViewAction, saveOrderViewAction } from "@/app/(protected)/orders/actions";
-import { OrderDetailDrawer } from "@/components/orders/order-detail-drawer";
-import { OrderDetailPanel } from "@/components/orders/order-detail-panel";
 import { OrderFilters } from "@/components/orders/order-filters";
-import { OrderInteractiveList } from "@/components/orders/order-interactive-list";
+import { OrderWorkspaceClient } from "@/components/orders/order-workspace-client";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { ExportButton } from "@/components/shared/export-button";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { ButtonLink, FeedbackMessage, PageHeader, Surface } from "@/components/shared/ui";
-import { getInternalUsers, getSavedOrderViews, getServiceOrderDetail, getServiceOrdersPageData, getTechnicians } from "@/lib/data";
+import { getInternalUsers, getSavedOrderViews, getServiceOrdersPageData, getTechnicians } from "@/lib/data";
 import { buildOrderQuery, getParamValue, parseOrderFilters } from "@/lib/filter-params";
 import { requireSession } from "@/lib/session";
 import type { InternalUserItem, OrderFilters as OrderFiltersType, SavedOrderView, TechnicianItem } from "@/types";
@@ -26,11 +24,6 @@ function removeFilterKeys(baseQuery: URLSearchParams, keys: string[]) {
   return query ? `/orders?${query}` : "/orders";
 }
 
-function createRowHref(baseQuery: URLSearchParams, orderId: string) {
-  const url = new URLSearchParams(baseQuery);
-  url.set("selected", orderId);
-  return `/orders?${url.toString()}`;
-}
 
 function createPageHref(baseQuery: URLSearchParams, page: number) {
   const url = new URLSearchParams(baseQuery);
@@ -141,7 +134,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   let technicians: TechnicianItem[] = [];
   let internalUsers: InternalUserItem[] = [];
   let savedViews: SavedOrderView[] = [];
-  let selectedOrder = null;
   let loadError: string | null = null;
 
   try {
@@ -152,8 +144,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       getSavedOrderViews(session.id)
     ]);
 
-    const selectedId = getParamValue(params, "selected");
-    selectedOrder = selectedId ? await getServiceOrderDetail(selectedId) : null;
   } catch (err) {
     console.error("[infraos] orders load error", err);
     loadError = "Não foi possível carregar as ordens agora. Revise a conexão com o banco e tente novamente.";
@@ -161,8 +151,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   const selectedId = getParamValue(params, "selected");
   const baseQuery = buildOrderQuery(filters);
-  const closeDetailHref = baseQuery.toString() ? `/orders?${baseQuery.toString()}` : "/orders";
-  const detailHref = selectedOrder ? createRowHref(baseQuery, selectedOrder.id) : closeDetailHref;
   const exportHref = `/api/exports/orders${baseQuery.toString() ? `?${baseQuery.toString()}` : ""}`;
   const exportData = (pageData?.items ?? []).map((order) => ({
     numero: order.number,
@@ -180,7 +168,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const lateCount = filteredItems.filter((order) => order.isLate).length;
   const dueTodayCount = filteredItems.filter((order) => order.isDueToday).length;
   const staleCount = filteredItems.filter((order) => order.isStale).length;
-  const clearAllHref = removeFilterKeys(baseQuery, ["q", "technician", "status", "priority", "from", "to", "lateOnly", "dueToday", "staleOnly", "sortBy", "sortDir", "page", "selected", "success", "error"]);
+  const clearAllHref = removeFilterKeys(baseQuery, ["q", "technician", "status", "priority", "from", "to", "lateOnly", "dueToday", "staleOnly", "sortBy", "sortDir", "page", "selected", "action", "success", "error"]);
   const pageStart = pageData ? (pageData.page - 1) * pageData.pageSize + 1 : 0;
   const pageEnd = pageData ? Math.min(pageData.total, pageData.page * pageData.pageSize) : 0;
 
@@ -253,7 +241,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         </div>
 
         <div className="px-4 pb-5 md:px-5">
-          <OrderInteractiveList baseQueryString={baseQuery.toString()} items={pageData?.items ?? []} selectedId={selectedOrder?.id ?? selectedId} />
+          <OrderWorkspaceClient baseQueryString={baseQuery.toString()} items={pageData?.items ?? []} technicians={technicians} internalUsers={internalUsers} initialSelectedId={selectedId ?? undefined} initialAction={action ?? undefined} success={success ?? undefined} error={error ?? undefined} />
 
           {pageData && pageData.totalPages > 1 ? (
             <div className="mt-4 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
@@ -270,10 +258,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           ) : null}
         </div>
       </div>
-
-      <OrderDetailDrawer isOpen={Boolean(selectedOrder)} closeHref={closeDetailHref} isActionOpen={Boolean(action)}>
-        <OrderDetailPanel order={selectedOrder} technicians={technicians} internalUsers={internalUsers} action={action} baseHref={detailHref} success={success} error={error} />
-      </OrderDetailDrawer>
     </>
   );
 }

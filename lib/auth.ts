@@ -44,7 +44,7 @@ export async function authenticateInternalUser(email: string, password: string):
     return null;
   }
 
-  await query(`update internal_users set last_login_at = now(), updated_at = now() where id = $1`, [user.id]);
+  await query(`update internal_users set last_login_at = now(), last_seen_at = now(), updated_at = now() where id = $1`, [user.id]);
 
   return {
     id: user.id,
