@@ -76,6 +76,7 @@ npm run dev
 ## Melhorias recomendadas
 - plano objetivo por prioridade: `docs/PLANO_MELHORIAS_PRIORIZADO.md`
 - foco em qualidade (CI), segurança, performance e operação
+- inclui trilha dedicada para UX/visual, acessibilidade e consistência entre telas
 
 ## Observações de produção
 - use contas nominais

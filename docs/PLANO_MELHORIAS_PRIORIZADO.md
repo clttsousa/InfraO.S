@@ -52,11 +52,35 @@ Este plano organiza melhorias em **impacto x esforço** para evoluir o produto c
 
 ---
 
+## 4) UX e visual (prioridade prática)
+
+1. **Design tokens centralizados**
+   - consolidar escala de espaçamento (`4/8/12/16/24/32`) e tipografia por nível (`title`, `subtitle`, `body`, `caption`)
+   - revisar contraste AA em light/dark para badges, texto secundário e estados de foco
+
+2. **Sistema de estados de interface**
+   - padronizar componentes para `loading`, `empty`, `error` e `success`
+   - garantir consistência entre dashboard, ordens e notificações
+
+3. **Feedback de interação**
+   - revisar microinterações para hover/focus/active com tempos consistentes
+   - adicionar `prefers-reduced-motion` para reduzir animações em acessibilidade
+
+4. **Responsividade operacional**
+   - otimizar topbar/sidebar para cenários de uso com teclado e telas menores
+   - reduzir densidade visual em listas extensas com modos compacto/confortável
+
+5. **Qualidade visual contínua**
+   - criar checklist visual por release (contraste, alinhamento, overflow, foco visível)
+   - capturar screenshots de telas críticas para detectar regressões visuais
+
+---
+
 ## Priorização sugerida
 
 - **P0 (imediato):** CI mínima, logs com request-id, checklist de banco
 - **P1 (próximo ciclo):** testes de API e fluxos críticos, revisão de autorização
-- **P2 (contínuo):** otimização de consultas e maturidade de release
+- **P2 (contínuo):** otimização de consultas, maturidade de release e consistência visual
 
 ## Indicadores para acompanhar
 
@@ -65,3 +89,5 @@ Este plano organiza melhorias em **impacto x esforço** para evoluir o produto c
 - tempo médio para detectar/recuperar incidente (MTTD/MTTR)
 - latência p95 de endpoints críticos
 - cobertura de testes por domínio
+- score de acessibilidade (Lighthouse/axe)
+- número de regressões visuais por release
