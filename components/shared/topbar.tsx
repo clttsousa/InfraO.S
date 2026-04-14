@@ -41,8 +41,8 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
 
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color:var(--surface)]/92 px-4 py-4 backdrop-blur md:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <header className="topbar-surface sticky top-0 z-20 border-b border-[var(--border)] px-4 py-4 backdrop-blur md:px-6">
+        <div className="topbar-inner flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <button onClick={onMenuClick} className="btn-base btn-secondary btn-md h-10 w-10 rounded-[var(--radius-control)] p-0 lg:hidden" aria-label="Abrir navegação lateral">
               <Menu className="h-5 w-5" />
@@ -52,11 +52,14 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
                 <h1 className="app-title truncate text-[1.85rem] font-semibold leading-tight md:text-[2.15rem]">{titleByPathname[pathname] ?? "InfraOS"}</h1>
                 {user.role === "ADMIN" ? <span className="badge-base badge-primary hidden sm:inline-flex"><Shield className="h-3.5 w-3.5" />Admin</span> : null}
               </div>
+              <p className="topbar-context mt-1 hidden truncate text-sm text-[var(--text-tertiary)] md:block">
+                Bem-vindo, <span className="font-semibold text-[var(--text-secondary)]">{user.name}</span> · Ambiente operacional em tempo real
+              </p>
             </div>
           </div>
-          <div className="flex w-full items-center gap-2 md:w-auto">
+          <div className="topbar-actions flex w-full items-center gap-2 md:w-auto">
             {preferences.showCommandPaletteHint ? (
-              <button type="button" onClick={() => setIsOpen(true)} className="command-hint-trigger app-surface-muted hidden items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 xl:inline-flex">
+              <button type="button" onClick={() => setIsOpen(true)} className="command-hint-trigger app-surface-muted hidden items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 lg:inline-flex">
                 <Search className="h-4 w-4 text-[var(--text-tertiary)]" />
                 <span className="app-text-tertiary text-sm">Buscar ações</span>
                 <span className="app-number rounded-md border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--text-tertiary)]">⌘ / Ctrl + K</span>
