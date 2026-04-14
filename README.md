@@ -72,6 +72,11 @@ npm run dev
 - exportação de dados
 - filtros salvos por usuário
 
+
+## Melhorias recomendadas
+- plano objetivo por prioridade: `docs/PLANO_MELHORIAS_PRIORIZADO.md`
+- foco em qualidade (CI), segurança, performance e operação
+
 ## Observações de produção
 - use contas nominais
 - troque senhas provisórias
