@@ -184,6 +184,12 @@ export type DashboardData = {
     atrasadas: number;
     finalizadasHoje: number;
   };
+  insights: {
+    opened24h: number;
+    openedPrevious24h: number;
+    finished24h: number;
+    finishedPrevious24h: number;
+  };
   dueToday: ServiceOrderItem[];
   overdue: ServiceOrderItem[];
   stale: ServiceOrderItem[];

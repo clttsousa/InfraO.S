@@ -75,7 +75,7 @@ function OrderMobileCard({ order, isSelected, isPulsing, onOpen }: { order: Serv
   );
 }
 
-export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect }: { items: ServiceOrderItem[]; selectedId?: string; pulseOrderId?: string; onSelect: (orderId: string) => void }) {
+export function OrderInteractiveList({ items, selectedId, pulseOrderId, compactMode = false, onSelect }: { items: ServiceOrderItem[]; selectedId?: string; pulseOrderId?: string; compactMode?: boolean; onSelect: (orderId: string) => void }) {
   const orders = useMemo(() => items, [items]);
 
   const openOrder = (orderId: string) => {
@@ -108,7 +108,7 @@ export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect
 
       <Surface className="hidden overflow-hidden xl:block">
         <div className="app-scrollbar overflow-auto">
-          <table className="orders-table w-full min-w-[900px] table-fixed text-left text-sm">
+          <table className={`orders-table w-full ${compactMode ? "min-w-[780px]" : "min-w-[900px]"} table-fixed text-left text-sm`} aria-label="Fila de ordens de serviço">
             <colgroup>
               <col className="w-[31%]" />
               <col className="w-[23%]" />
@@ -126,34 +126,27 @@ export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect
                   <tr
                     key={order.id}
                     className={getRowClass(order, selectedId, pulseOrderId)}
-                    tabIndex={0}
                     aria-selected={selectedId === order.id}
-                                  onClick={() => openOrder(order.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openOrder(order.id);
-                      }
-                    }}
+                    onClick={() => openOrder(order.id)}
                   >
                     <td className="px-4 py-3 align-top">
                       <div className="space-y-1.5">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="app-number text-sm font-semibold break-all">{order.number}</div>
-                            <div className="text-sm leading-6 text-[var(--text-secondary)]">{order.clientName ?? "Sem cliente"}</div>
+                            <div className={`${compactMode ? "text-xs leading-5" : "text-sm leading-6"} text-[var(--text-secondary)]`}>{order.clientName ?? "Sem cliente"}</div>
                           </div>
                           <div className="order-open-indicator hidden shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-tertiary)] xl:block">
                             <ChevronRight className="h-4 w-4" />
                           </div>
                         </div>
-                        <span className="table-row-hint text-xs font-medium text-[var(--text-tertiary)]">Clique para abrir o detalhe</span>
+                        <span className="table-row-hint text-xs font-medium text-[var(--text-tertiary)]">{compactMode ? "Use o ícone para abrir" : "Clique na linha ou use o ícone para abrir"}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top">
                       <div className="space-y-1.5">
-                        <div className="text-sm font-medium text-[var(--text-primary)]">{order.teamSummary}</div>
-                        <div className="text-xs leading-5 text-[var(--text-tertiary)]">Resp. interno: {order.internalOwner}</div>
+                        <div className={`${compactMode ? "text-xs" : "text-sm"} font-medium text-[var(--text-primary)]`}>{order.teamSummary}</div>
+                        <div className="text-xs leading-5 text-[var(--text-tertiary)]">{compactMode ? order.internalOwner : `Resp. interno: ${order.internalOwner}`}</div>
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top">
@@ -163,7 +156,12 @@ export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <div className="flex flex-wrap items-center gap-2"><StatusBadge status={order.status} /><PriorityBadge priority={order.priority} /></div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2"><StatusBadge status={order.status} /><PriorityBadge priority={order.priority} /></div>
+                        <button type="button" className="btn-base btn-ghost btn-sm h-8 px-2.5" onClick={(event) => { event.stopPropagation(); openOrder(order.id); }} aria-label={`Abrir detalhes da ordem ${order.number}`}>
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

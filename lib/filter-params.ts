@@ -1,8 +1,13 @@
 import type { OrderFilters, OrderSortDirection, OrderSortField, ReportFilters } from "@/types";
 import { isUuid } from "@/lib/validation";
+import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_ALL_OPTIONS } from "@/lib/constants";
 
 function getFilterValue(value: string | string[] | undefined) {
   return typeof value === "string" ? value : "";
+}
+
+function getTrimmedValue(value: string | string[] | undefined, maxLength = 120) {
+  return getFilterValue(value).trim().slice(0, maxLength);
 }
 
 function getFlagValue(value: string | string[] | undefined) {
@@ -16,19 +21,23 @@ function getPositiveInt(value: string | string[] | undefined, fallback: number) 
 
 const ORDER_SORT_FIELDS: OrderSortField[] = ["deadline", "updated", "opened", "orderNumber", "status", "priority"];
 const ORDER_SORT_DIRECTIONS: OrderSortDirection[] = ["asc", "desc"];
+const ORDER_STATUS_VALUES = new Set<string>(ORDER_STATUS_ALL_OPTIONS.map((item) => item.value));
+const ORDER_PRIORITY_VALUES = new Set<string>(ORDER_PRIORITY_OPTIONS.map((item) => item.value));
 
 export function parseOrderFilters(params: Record<string, string | string[] | undefined>): OrderFilters {
   const technicianId = getFilterValue(params.technician);
+  const status = getFilterValue(params.status);
+  const priority = getFilterValue(params.priority);
   const rawSortBy = getFilterValue(params.sortBy) as OrderSortField;
   const rawSortDir = getFilterValue(params.sortDir) as OrderSortDirection;
 
   return {
-    q: getFilterValue(params.q),
+    q: getTrimmedValue(params.q),
     technicianId: isUuid(technicianId) ? technicianId : "",
-    status: getFilterValue(params.status),
-    priority: getFilterValue(params.priority),
-    from: getFilterValue(params.from),
-    to: getFilterValue(params.to),
+    status: ORDER_STATUS_VALUES.has(status) ? status : "",
+    priority: ORDER_PRIORITY_VALUES.has(priority) ? priority : "",
+    from: getTrimmedValue(params.from, 10),
+    to: getTrimmedValue(params.to, 10),
     lateOnly: getFlagValue(params.lateOnly),
     dueToday: getFlagValue(params.dueToday),
     staleOnly: getFlagValue(params.staleOnly),
@@ -58,12 +67,15 @@ export function buildOrderQuery(filters: OrderFilters) {
 
 export function parseReportFilters(params: Record<string, string | string[] | undefined>): ReportFilters {
   const technicianId = getFilterValue(params.technician);
+  const status = getFilterValue(params.status);
+  const priority = getFilterValue(params.priority);
+
   return {
-    from: getFilterValue(params.from),
-    to: getFilterValue(params.to),
+    from: getTrimmedValue(params.from, 10),
+    to: getTrimmedValue(params.to, 10),
     technicianId: isUuid(technicianId) ? technicianId : "",
-    status: getFilterValue(params.status),
-    priority: getFilterValue(params.priority)
+    status: ORDER_STATUS_VALUES.has(status) ? status : "",
+    priority: ORDER_PRIORITY_VALUES.has(priority) ? priority : ""
   };
 }
 

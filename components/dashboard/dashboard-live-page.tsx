@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CalendarClock, Radio, TimerReset } from "lucide-react";
+import { AlertTriangle, CalendarClock, Radio, RefreshCw, TimerReset, TrendingDown, TrendingUp } from "lucide-react";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { DashboardTable } from "@/components/dashboard/dashboard-table";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { EmptyState, FeedbackMessage, PageHeader, Surface } from "@/components/shared/ui";
+import { Button, EmptyState, FeedbackMessage, PageHeader, Surface } from "@/components/shared/ui";
 import type { DashboardData } from "@/types";
 
 function TechnicianLoadBar({ openOrders, lateOrders, pendingOrders }: { openOrders: number; lateOrders: number; pendingOrders: number }) {
@@ -44,10 +44,18 @@ function StatCard({ label, value, tone, href, caption }: { label: string; value:
   );
 }
 
-async function fetchDashboardData() {
-  const response = await fetch("/api/dashboard", { cache: "no-store" });
-  if (!response.ok) throw new Error("Não foi possível atualizar o dashboard.");
-  return response.json() as Promise<DashboardData>;
+function DeltaBadge({ current, previous }: { current: number; previous: number }) {
+  const delta = current - previous;
+  const Icon = delta >= 0 ? TrendingUp : TrendingDown;
+  const toneClass = delta >= 0 ? "badge-success" : "badge-warning";
+  const prefix = delta > 0 ? "+" : "";
+
+  return (
+    <span className={`badge-base ${toneClass}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {prefix}{delta}
+    </span>
+  );
 }
 
 export function DashboardLivePage({ initialData, forbidden, initialError }: { initialData: DashboardData | null; forbidden?: boolean; initialError?: string | null }) {
@@ -56,15 +64,23 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
   const [loadError, setLoadError] = useState<string | null>(initialError ?? null);
   const refreshTimerRef = useRef<number | null>(null);
   const isRefreshingRef = useRef(false);
+  const dashboardAbortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
     if (isRefreshingRef.current) return;
     isRefreshingRef.current = true;
+    dashboardAbortRef.current?.abort();
+    const controller = new AbortController();
+    dashboardAbortRef.current = controller;
+
     try {
-      const nextData = await fetchDashboardData();
+      const response = await fetch("/api/dashboard", { cache: "no-store", signal: controller.signal });
+      if (!response.ok) throw new Error("Não foi possível atualizar o dashboard.");
+      const nextData = await response.json() as DashboardData;
       setData(nextData);
       setLoadError(null);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       setLoadError(error instanceof Error ? error.message : "Não foi possível atualizar o dashboard.");
     } finally {
       isRefreshingRef.current = false;
@@ -82,6 +98,13 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
       }, 280);
     });
   }, [refresh, subscribe]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+      dashboardAbortRef.current?.abort();
+    };
+  }, []);
 
   const statCards = useMemo(() => data ? [
     { label: "Abertas", value: data.stats.abertas, tone: "neutral", href: "/orders?status=ABERTA", caption: "fila geral em operação" },
@@ -101,7 +124,12 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
         eyebrow="Acompanhamento operacional"
         title="Dashboard"
         description="Leitura rápida das ordens que exigem atenção, com cards clicáveis e visão objetiva da operação."
-        actions={<div className={`badge-base ${isConnected ? "badge-success" : "badge-neutral"}`}><Radio className="h-3.5 w-3.5" />{isConnected ? "Ao vivo" : "Reconectando"}</div>}
+        actions={
+          <>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void refresh()}><RefreshCw className="h-4 w-4" />Atualizar agora</Button>
+            <div className={`badge-base ${isConnected ? "badge-success" : "badge-neutral"}`}><Radio className="h-3.5 w-3.5" />{isConnected ? "Ao vivo" : "Reconectando"}</div>
+          </>
+        }
       />
 
       {!data ? (
@@ -113,6 +141,32 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
           </div>
 
           <DashboardCharts data={data} />
+
+          <Surface className="animate-slideInUp p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="app-title text-lg font-semibold">Comparativo das últimas 24h</h3>
+                <p className="app-text-secondary mt-1 text-sm">Leitura analítica curta para entender tendência sem perder a visão em tempo real.</p>
+              </div>
+              <span className="badge-base badge-neutral">analítico</span>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="app-surface-muted rounded-[var(--radius-control)] p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium text-[var(--text-primary)]">Ordens abertas</div>
+                  <DeltaBadge current={data.insights.opened24h} previous={data.insights.openedPrevious24h} />
+                </div>
+                <div className="mt-1 text-sm text-[var(--text-secondary)]">Atual: {data.insights.opened24h} · Período anterior: {data.insights.openedPrevious24h}</div>
+              </div>
+              <div className="app-surface-muted rounded-[var(--radius-control)] p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium text-[var(--text-primary)]">Ordens finalizadas</div>
+                  <DeltaBadge current={data.insights.finished24h} previous={data.insights.finishedPrevious24h} />
+                </div>
+                <div className="mt-1 text-sm text-[var(--text-secondary)]">Atual: {data.insights.finished24h} · Período anterior: {data.insights.finishedPrevious24h}</div>
+              </div>
+            </div>
+          </Surface>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.32fr_0.88fr]">
             <div className="space-y-6">

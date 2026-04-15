@@ -25,6 +25,7 @@ import {
   updateServiceOrderStatusAction
 } from "@/app/(protected)/orders/actions";
 import { AuditEventCard } from "@/components/audit/audit-event-list";
+import { OrderNoteTemplate } from "@/components/orders/order-note-template";
 import { PriorityBadge, StatusBadge } from "@/components/orders/order-status";
 import { OrderActionOverlay } from "@/components/orders/order-action-overlay";
 import { SupportTechnicianSelector } from "@/components/orders/support-technician-selector";
@@ -79,6 +80,28 @@ function getLogMeta(log: ServiceOrderLogItem) {
   return { icon: History, tone: "neutral", label: "Registro" };
 }
 
+const NOTE_TEMPLATES = [
+  { label: "Tentativa de contato com cliente", value: "Tentativa de contato realizada com o cliente. Aguardando retorno para avançar com a tratativa." },
+  { label: "Aguardando fornecedor/terceiro", value: "Atividade depende de fornecedor/terceiro. Ordem segue monitorada até confirmação de prazo externo." },
+  { label: "Aguardando aprovação interna", value: "Solicitação encaminhada para aprovação interna. Assim que houver retorno, a execução será atualizada." }
+];
+
+const FINISH_TEMPLATES = [
+  { label: "Execução concluída e validada", value: "Atendimento concluído, validação realizada com sucesso e sem pendências operacionais." },
+  { label: "Concluída com orientação ao cliente", value: "Execução finalizada e orientações de continuidade foram repassadas ao cliente responsável." }
+];
+
+const REOPEN_TEMPLATES = [
+  { label: "Retorno do cliente após fechamento", value: "Ordem reaberta após novo retorno do cliente com necessidade adicional de atendimento." },
+  { label: "Pendência técnica identificada", value: "Foi identificada pendência técnica após o encerramento inicial. Ordem reaberta para ajuste." }
+];
+
+const CANCEL_TEMPLATES = [
+  { label: "Solicitação cancelada pelo cliente", value: "Ordem cancelada por solicitação do cliente responsável, sem necessidade de continuidade." },
+  { label: "Atividade duplicada", value: "Ordem cancelada por duplicidade de abertura. O atendimento seguirá em outra O.S. vinculada." },
+  { label: "Escopo inválido para operação", value: "Cancelamento por escopo não compatível com este fluxo operacional." }
+];
+
 function ActionFooter({ children }: { children: ReactNode }) {
   return (
     <div className="sticky bottom-0 -mx-5 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-1 pt-4">
@@ -105,7 +128,7 @@ function DetailTimelineCard({ title, subtitle, note, when, tone, icon }: { title
   );
 }
 
-export function OrderDetailPanel({ order, technicians, internalUsers, action, onActionChange, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianItem[]; internalUsers: InternalUserItem[]; action?: string; onActionChange?: (action?: string) => void; baseHref: string; success?: string; error?: string; }) {
+export function OrderDetailPanel({ order, technicians, internalUsers, action, onActionChange, onOpenNextOrder, hasNextOrder, baseHref, success, error }: { order: ServiceOrderDetail | null; technicians: TechnicianItem[]; internalUsers: InternalUserItem[]; action?: string; onActionChange?: (action?: string) => void; onOpenNextOrder?: () => void; hasNextOrder?: boolean; baseHref: string; success?: string; error?: string; }) {
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
 
   useEffect(() => {
@@ -145,6 +168,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {hasNextOrder ? <Button type="button" variant="secondary" onClick={onOpenNextOrder}><UserRound className="h-4 w-4" />Abrir próxima O.S.</Button> : null}
         <Button type="button" variant="secondary" onClick={() => onActionChange?.("edit")}><Pencil className="h-4 w-4" />Editar O.S.</Button>
         {!canReopen ? <Button type="button" variant="secondary" onClick={() => onActionChange?.("status")}><RefreshCw className="h-4 w-4" />Alterar status</Button> : null}
         <Button type="button" variant="secondary" onClick={() => onActionChange?.("note")}><MessageSquare className="h-4 w-4" />Adicionar observação</Button>
@@ -291,7 +315,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
                   <input type="hidden" name="id" value={order.id} />
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "note")} />
                   <FormSection title="Nova observação" description="Use para registrar contexto operacional adicional sem alterar a essência da ordem." icon={<MessageSquare className="h-4 w-4 text-[var(--primary)]" />} compact>
-                    <TextAreaInput autoFocus label="Observação interna" name="note" rows={6} required description="Quanto mais objetiva, melhor para o próximo atendimento." />
+                    <OrderNoteTemplate label="Observação interna" name="note" rows={6} required templates={NOTE_TEMPLATES} description="Quanto mais objetiva, melhor para o próximo atendimento." />
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Nota interna</p><p className="field-hint">A observação entra na trilha da O.S. e ajuda no repasse entre times.</p></div>
@@ -307,7 +331,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "finish")} />
                   <div className="alert-success">Ao finalizar, a observação de fechamento será gravada no histórico e nos detalhes da ordem.</div>
                   <FormSection title="Encerrar atendimento" description="Informe como a ordem foi concluída para deixar a trilha operacional completa." icon={<CheckCircle2 className="h-4 w-4 text-[var(--success)]" />} compact>
-                    <TextAreaInput autoFocus label="Observação de fechamento" name="note" rows={6} required />
+                    <OrderNoteTemplate label="Observação de fechamento" name="note" rows={6} required templates={FINISH_TEMPLATES} />
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Fechamento auditável</p><p className="field-hint">A ordem passa a finalizada e pode ser reaberta depois, se necessário.</p></div>
@@ -323,7 +347,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "reopen")} />
                   <div className="alert-info">A O.S. será reaberta com status <span className="font-semibold">Aberta</span>.</div>
                   <FormSection title="Reabrir ordem" description="Explique por que a ordem voltou para a operação." icon={<RotateCcw className="h-4 w-4 text-[var(--info)]" />} compact>
-                    <TextAreaInput autoFocus label="Motivo da reabertura" name="reason" rows={6} required />
+                    <OrderNoteTemplate label="Motivo da reabertura" name="reason" rows={6} required templates={REOPEN_TEMPLATES} />
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Reversão controlada</p><p className="field-hint">Finalização e cancelamento anteriores continuam preservados no histórico.</p></div>
@@ -339,7 +363,7 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
                   <input type="hidden" name="redirectTo" value={buildHref(baseHref, "cancel")} />
                   <div className="alert-danger">Cancelamentos ficam auditáveis no histórico e preservam toda a trilha anterior da O.S.</div>
                   <FormSection title="Cancelar ordem" description="Informe o motivo para a equipe entender por que a fila foi interrompida." icon={<Ban className="h-4 w-4 text-[var(--danger)]" />} compact>
-                    <TextAreaInput autoFocus label="Motivo do cancelamento" name="reason" rows={6} required />
+                    <OrderNoteTemplate label="Motivo do cancelamento" name="reason" rows={6} required templates={CANCEL_TEMPLATES} />
                   </FormSection>
                   <ActionFooter>
                     <div><p className="text-sm font-semibold text-[var(--text-primary)]">Cancelamento consciente</p><p className="field-hint">Use quando a ordem realmente não deve mais seguir em operação.</p></div>

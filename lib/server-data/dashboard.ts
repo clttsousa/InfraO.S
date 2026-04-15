@@ -5,7 +5,7 @@ import { baseOrderSelect, mapOrderRow, type ActivityRow, type DashboardStatRow, 
 import type { DashboardData } from "@/types";
 
 async function getDashboardDataUncached(): Promise<DashboardData> {
-  const [statsResult, dueTodayResult, overdueResult, staleResult, activitiesResult, techSummaryResult] = await Promise.all([
+  const [statsResult, trendResult, dueTodayResult, overdueResult, staleResult, activitiesResult, techSummaryResult] = await Promise.all([
     query<DashboardStatRow>(`
       select
         count(*) filter (where status = 'ABERTA')::text as abertas,
@@ -17,6 +17,19 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
         count(*) filter (
           where status = 'FINALIZADA' and (finalized_at at time zone 'America/Sao_Paulo')::date = (now() at time zone 'America/Sao_Paulo')::date
         )::text as finalizadas_hoje
+      from service_orders
+    `),
+    query<{
+      opened_24h: string;
+      opened_prev_24h: string;
+      finished_24h: string;
+      finished_prev_24h: string;
+    }>(`
+      select
+        count(*) filter (where created_at >= now() - interval '24 hours')::text as opened_24h,
+        count(*) filter (where created_at >= now() - interval '48 hours' and created_at < now() - interval '24 hours')::text as opened_prev_24h,
+        count(*) filter (where finalized_at is not null and finalized_at >= now() - interval '24 hours')::text as finished_24h,
+        count(*) filter (where finalized_at is not null and finalized_at >= now() - interval '48 hours' and finalized_at < now() - interval '24 hours')::text as finished_prev_24h
       from service_orders
     `),
     query<ServiceOrderRow>(`
@@ -79,6 +92,12 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
     atrasadas: "0",
     finalizadas_hoje: "0"
   };
+  const trend = trendResult.rows[0] ?? {
+    opened_24h: "0",
+    opened_prev_24h: "0",
+    finished_24h: "0",
+    finished_prev_24h: "0"
+  };
 
   return {
     stats: {
@@ -87,6 +106,12 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
       pendentes: Number(stats.pendentes),
       atrasadas: Number(stats.atrasadas),
       finalizadasHoje: Number(stats.finalizadas_hoje)
+    },
+    insights: {
+      opened24h: Number(trend.opened_24h),
+      openedPrevious24h: Number(trend.opened_prev_24h),
+      finished24h: Number(trend.finished_24h),
+      finishedPrevious24h: Number(trend.finished_prev_24h)
     },
     dueToday: dueTodayResult.rows.map(mapOrderRow),
     overdue: overdueResult.rows.map(mapOrderRow),

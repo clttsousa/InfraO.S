@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChevronsDownUp, ChevronsUpDown, History } from "lucide-react";
 import { OrderDetailDrawer } from "@/components/orders/order-detail-drawer";
 import { OrderDetailPanel } from "@/components/orders/order-detail-panel";
 import { OrderDetailSkeleton } from "@/components/orders/order-detail-skeleton";
 import { OrderInteractiveList } from "@/components/orders/order-interactive-list";
-import { EmptyState } from "@/components/shared/ui";
+import { Button, EmptyState } from "@/components/shared/ui";
 import type { InternalUserItem, ServiceOrderDetail, ServiceOrderItem, TechnicianItem } from "@/types";
 
 type HistoryMode = "push" | "replace";
@@ -64,18 +64,31 @@ export function OrderWorkspaceClient({
   const [detail, setDetail] = useState<ServiceOrderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(initialSelectedId));
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [compactMode, setCompactMode] = useState(false);
+  const [recentOrderIds, setRecentOrderIds] = useState<string[]>([]);
   const detailCacheRef = useRef<Map<string, ServiceOrderDetail>>(new Map());
   const currentRequestId = useRef<string | null>(null);
+  const listAbortRef = useRef<AbortController | null>(null);
+  const detailAbortRef = useRef<AbortController | null>(null);
 
   const baseHref = useMemo(() => buildOrdersHref(baseQueryString, selectedId), [baseQueryString, selectedId]);
+  const selectedIndex = useMemo(() => orders.findIndex((item) => item.id === selectedId), [orders, selectedId]);
+  const nextOrderId = selectedIndex >= 0 ? orders[selectedIndex + 1]?.id : orders[0]?.id;
+  const prevOrderId = selectedIndex > 0 ? orders[selectedIndex - 1]?.id : undefined;
+  const recentOrders = useMemo(() => recentOrderIds.map((id) => orders.find((item) => item.id === id)).filter(Boolean) as ServiceOrderItem[], [orders, recentOrderIds]);
 
   const refreshList = useCallback(async () => {
+    listAbortRef.current?.abort();
+    const controller = new AbortController();
+    listAbortRef.current = controller;
+
     try {
-      const response = await fetch(`/api/orders${baseQueryString ? `?${baseQueryString}` : ""}`, { cache: "no-store" });
+      const response = await fetch(`/api/orders${baseQueryString ? `?${baseQueryString}` : ""}`, { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Falha ao atualizar a fila de ordens.");
       const payload = (await response.json()) as { items: ServiceOrderItem[] };
       setOrders(payload.items ?? []);
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       // Falha transitória ignorada; próximo evento ou interação tenta novamente.
     }
   }, [baseQueryString]);
@@ -117,6 +130,9 @@ export function OrderWorkspaceClient({
     setDetail(null);
     setIsLoading(true);
     setLoadError(null);
+    detailAbortRef.current?.abort();
+    const controller = new AbortController();
+    detailAbortRef.current = controller;
 
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -124,6 +140,7 @@ export function OrderWorkspaceClient({
         credentials: "same-origin",
         headers: { Accept: "application/json" },
         cache: "no-store",
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -142,6 +159,7 @@ export function OrderWorkspaceClient({
         setLoadError("A ordem selecionada não foi encontrada.");
       }
     } catch (fetchError) {
+      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
       if (currentRequestId.current !== orderId) return;
       setDetail(null);
       setLoadError(fetchError instanceof Error ? fetchError.message : "Não foi possível carregar os detalhes da O.S.");
@@ -158,6 +176,11 @@ export function OrderWorkspaceClient({
       setAction(undefined);
       setDrawerOpen(true);
       setLoadError(null);
+      setRecentOrderIds((current) => {
+        const next = [orderId, ...current.filter((id) => id !== orderId)].slice(0, 6);
+        window.localStorage.setItem("infraos:orders:recent", JSON.stringify(next));
+        return next;
+      });
       syncUrl(orderId, undefined, "push");
       void loadDetail(orderId);
     },
@@ -185,6 +208,22 @@ export function OrderWorkspaceClient({
   useEffect(() => {
     setOrders(items);
   }, [items]);
+
+  useEffect(() => {
+    if (window.localStorage.getItem("infraos:orders:compact") === "1") {
+      setCompactMode(true);
+    }
+
+    try {
+      const recentStored = window.localStorage.getItem("infraos:orders:recent");
+      if (!recentStored) return;
+      const parsed = JSON.parse(recentStored);
+      if (!Array.isArray(parsed)) return;
+      setRecentOrderIds(parsed.filter((item) => typeof item === "string").slice(0, 6));
+    } catch {
+      // Ignora estado inválido no storage local.
+    }
+  }, []);
 
   useEffect(() => {
     if (!initialSelectedId) return;
@@ -215,6 +254,37 @@ export function OrderWorkspaceClient({
   }, [refreshDetail, refreshList, selectedId, subscribe]);
 
   useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+      if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+      listAbortRef.current?.abort();
+      detailAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag && ["input", "textarea", "select", "button"].includes(tag)) return;
+      if (!event.altKey) return;
+
+      if (event.key === "ArrowDown" && nextOrderId) {
+        event.preventDefault();
+        openOrder(nextOrderId);
+      }
+
+      if (event.key === "ArrowUp" && prevOrderId) {
+        event.preventDefault();
+        openOrder(prevOrderId);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [nextOrderId, openOrder, prevOrderId]);
+
+  useEffect(() => {
     const handlePopState = () => {
       const { selectedId: locationSelectedId, action: locationAction } = readStateFromLocation();
       setSelectedId(locationSelectedId);
@@ -243,10 +313,48 @@ export function OrderWorkspaceClient({
 
   return (
     <>
+      <div className="mb-3 space-y-3">
+        <div className="app-surface-muted flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-control)] px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <History className="h-3.5 w-3.5" />
+            <span>Navegação rápida: use <strong>Alt + ↑</strong> e <strong>Alt + ↓</strong>.</span>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setCompactMode((current) => {
+                const next = !current;
+                window.localStorage.setItem("infraos:orders:compact", next ? "1" : "0");
+                return next;
+              });
+            }}
+          >
+            {compactMode ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+            {compactMode ? "Modo detalhado" : "Modo compacto"}
+          </Button>
+        </div>
+
+        {recentOrders.length ? (
+          <div className="app-surface-muted rounded-[var(--radius-control)] px-3 py-2">
+            <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Recentes</div>
+            <div className="flex flex-wrap gap-1.5">
+              {recentOrders.map((order) => (
+                <button key={order.id} type="button" className={`filter-chip filter-chip-sm ${selectedId === order.id ? "filter-chip-active" : ""}`} onClick={() => openOrder(order.id)}>
+                  {order.number}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
       <OrderInteractiveList
         items={orders}
         selectedId={selectedId}
         pulseOrderId={pulseOrderId}
+        compactMode={compactMode}
         onSelect={openOrder}
       />
 
@@ -269,6 +377,8 @@ export function OrderWorkspaceClient({
             internalUsers={internalUsers}
             action={action}
             onActionChange={handleActionChange}
+            onOpenNextOrder={nextOrderId ? () => openOrder(nextOrderId) : undefined}
+            hasNextOrder={Boolean(nextOrderId && nextOrderId !== selectedId)}
             baseHref={baseHref}
             success={success}
             error={error}

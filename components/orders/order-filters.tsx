@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDownWideNarrow, CalendarClock, ChevronsUpDown, Search, SlidersHorizontal, TimerReset } from "lucide-react";
 import { Button } from "@/components/shared/ui";
+import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_ALL_OPTIONS } from "@/lib/constants";
+import { buildOrderQuery } from "@/lib/filter-params";
 import type { OrderFilters as OrderFiltersType, TechnicianItem } from "@/types";
 
 function isChecked(value?: boolean) {
@@ -27,17 +29,33 @@ function hasAdvancedFilters(filters: OrderFiltersType) {
 
 export function OrderFilters({ technicians, filters }: { technicians: TechnicianItem[]; filters: OrderFiltersType }) {
   const [showAdvanced, setShowAdvanced] = useState(hasAdvancedFilters(filters));
+  const advancedId = "orders-advanced-filters";
+  const searchId = "orders-search-input";
 
   const activeCount = useMemo(() => (
     [filters.q, filters.technicianId, filters.status, filters.priority, filters.from, filters.to, filters.lateOnly, filters.dueToday, filters.staleOnly]
       .filter(Boolean).length
   ), [filters]);
 
-  const quickFilters = [
-    { href: "/orders?lateOnly=1", label: "Atrasadas", icon: <AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" /> },
-    { href: "/orders?dueToday=1", label: "Vence hoje", icon: <CalendarClock className="h-3.5 w-3.5 text-[var(--warning)]" /> },
-    { href: "/orders?staleOnly=1", label: "Sem atualização", icon: <TimerReset className="h-3.5 w-3.5 text-[var(--text-tertiary)]" /> }
-  ];
+  const quickFilters = useMemo(() => {
+    const createQuickHref = (key: "lateOnly" | "dueToday" | "staleOnly") => {
+      const nextFilters = {
+        ...filters,
+        page: 1,
+        lateOnly: key === "lateOnly",
+        dueToday: key === "dueToday",
+        staleOnly: key === "staleOnly",
+      };
+      const query = buildOrderQuery(nextFilters).toString();
+      return query ? `/orders?${query}` : "/orders";
+    };
+
+    return [
+      { href: createQuickHref("lateOnly"), label: "Atrasadas", icon: <AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" />, active: Boolean(filters.lateOnly) },
+      { href: createQuickHref("dueToday"), label: "Vence hoje", icon: <CalendarClock className="h-3.5 w-3.5 text-[var(--warning)]" />, active: Boolean(filters.dueToday) },
+      { href: createQuickHref("staleOnly"), label: "Sem atualização", icon: <TimerReset className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />, active: Boolean(filters.staleOnly) }
+    ];
+  }, [filters]);
 
   return (
     <form method="get" className="orders-filter-toolbar app-surface animate-slideInUp rounded-[var(--radius-panel)] p-3">
@@ -52,7 +70,7 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {activeCount ? <div className="badge-base badge-primary px-2 py-1 text-[11px]">{activeCount} ativo(s)</div> : null}
-            <button type="button" onClick={() => setShowAdvanced((current) => !current)} className="filter-quick-link filter-quick-link-compact">
+            <button type="button" onClick={() => setShowAdvanced((current) => !current)} className="filter-quick-link filter-quick-link-compact" aria-expanded={showAdvanced} aria-controls={advancedId}>
               <ChevronsUpDown className="h-3.5 w-3.5" />
               {showAdvanced ? "Menos filtros" : "Mais filtros"}
             </button>
@@ -60,14 +78,14 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
         </div>
 
         <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
-          <label className="input-base flex h-10 items-center gap-2 px-3 py-2">
+          <label htmlFor={searchId} className="input-base flex h-10 items-center gap-2 px-3 py-2">
             <Search className="h-4 w-4 text-[var(--text-tertiary)]" />
-            <input name="q" defaultValue={filters.q ?? ""} placeholder="Buscar por número, cliente ou descrição" className="w-full border-0 bg-transparent text-sm outline-none" />
+            <input id={searchId} name="q" defaultValue={filters.q ?? ""} placeholder="Buscar por número, cliente ou descrição" className="w-full border-0 bg-transparent text-sm outline-none" />
           </label>
 
           <div className="flex flex-wrap gap-2">
             {quickFilters.map((item) => (
-              <Link key={item.href} href={item.href} className="filter-quick-link filter-quick-link-compact">
+              <Link key={item.href} href={item.href} className={`filter-quick-link filter-quick-link-compact ${item.active ? "filter-chip-active" : ""}`} aria-current={item.active ? "page" : undefined}>
                 {item.icon}
                 {item.label}
               </Link>
@@ -83,7 +101,7 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
       </div>
 
       {showAdvanced ? (
-        <div className="mt-3 space-y-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)]/55 p-3">
+        <div id={advancedId} className="mt-3 space-y-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)]/55 p-3">
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             <select name="technician" defaultValue={filters.technicianId ?? ""} className="select-base h-10 text-sm outline-none">
               <option value="">Técnico envolvido: Todos</option>
@@ -91,19 +109,11 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
             </select>
             <select name="status" defaultValue={filters.status ?? ""} className="select-base h-10 text-sm outline-none">
               <option value="">Status: Todos</option>
-              <option value="ABERTA">Aberta</option>
-              <option value="ENCAMINHADA">Encaminhada</option>
-              <option value="EM_ACOMPANHAMENTO">Em acompanhamento</option>
-              <option value="PENDENTE">Pendente</option>
-              <option value="FINALIZADA">Finalizada</option>
-              <option value="CANCELADA">Cancelada</option>
+              {ORDER_STATUS_ALL_OPTIONS.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
             </select>
             <select name="priority" defaultValue={filters.priority ?? ""} className="select-base h-10 text-sm outline-none">
               <option value="">Prioridade: Todas</option>
-              <option value="BAIXA">Baixa</option>
-              <option value="MEDIA">Média</option>
-              <option value="ALTA">Alta</option>
-              <option value="URGENTE">Urgente</option>
+              {ORDER_PRIORITY_OPTIONS.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}
             </select>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="field-stack block">

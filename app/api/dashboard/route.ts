@@ -8,6 +8,11 @@ export async function GET() {
     return session;
   }
 
-  const data = await getDashboardData();
-  return NextResponse.json(data, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  try {
+    const data = await getDashboardData();
+    return NextResponse.json(data, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  } catch (error) {
+    console.error("[infraos] dashboard api error", error);
+    return NextResponse.json({ message: "Não foi possível carregar o dashboard no momento." }, { status: 500 });
+  }
 }

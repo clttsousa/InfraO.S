@@ -64,7 +64,7 @@ export function DashboardTable({ title, description, orders, href }: { title: st
                   <td className="px-5 py-3"><StatusBadge status={order.status} /></td>
                   <td className="px-5 py-3">
                     <div className="row-actions flex items-center gap-2 text-[var(--text-tertiary)]">
-                      <Link href={`/orders?selected=${order.id}`} className="btn-base btn-ghost btn-sm h-9 w-9 rounded-lg p-0" title="Abrir detalhe">
+                      <Link href={`/orders?selected=${order.id}`} className="btn-base btn-ghost btn-sm h-9 w-9 rounded-lg p-0" title="Abrir detalhe" aria-label={`Abrir detalhe da ordem ${order.number}`}>
                         <Eye className="h-4 w-4" />
                       </Link>
                     </div>
