@@ -8,10 +8,10 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck",
-    "start:prod": "next start",
-    "engines": {
-  	"node": "20.x"
-     }
+    "start:prod": "next start"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "jose": "6.2.2",
