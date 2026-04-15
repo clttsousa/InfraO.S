@@ -108,7 +108,7 @@ export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect
 
       <Surface className="hidden overflow-hidden xl:block">
         <div className="app-scrollbar overflow-auto">
-          <table className="orders-table w-full min-w-[900px] table-fixed text-left text-sm">
+          <table className="orders-table w-full min-w-[900px] table-fixed text-left text-sm" aria-label="Fila de ordens de serviço">
             <colgroup>
               <col className="w-[31%]" />
               <col className="w-[23%]" />
@@ -127,8 +127,10 @@ export function OrderInteractiveList({ items, selectedId, pulseOrderId, onSelect
                     key={order.id}
                     className={getRowClass(order, selectedId, pulseOrderId)}
                     tabIndex={0}
+                    role="button"
                     aria-selected={selectedId === order.id}
-                                  onClick={() => openOrder(order.id)}
+                    aria-label={`Abrir detalhes da ordem ${order.number}`}
+                    onClick={() => openOrder(order.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();

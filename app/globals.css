@@ -726,6 +726,8 @@ html[data-emphasize-alerts="1"] .alert-emphasis-stale { box-shadow: inset 3px 0 
 /* ===== FILTERS ===== */
 .filter-quick-link { display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); padding: 0.48rem 0.8rem; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
 .filter-quick-link:hover { border-color: color-mix(in srgb, var(--primary) 18%, var(--border)); color: var(--text-primary); transform: translateY(-1px); }
+.filter-quick-link.filter-chip-active,
+.filter-quick-link[aria-current="page"] { border-color: color-mix(in srgb, var(--primary) 26%, var(--border)); background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface)); color: var(--primary); }
 .filter-chip { display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border)); background: color-mix(in srgb, var(--primary-soft) 44%, var(--surface)); padding: 0.55rem 0.85rem; font-size: 0.8rem; font-weight: 600; color: var(--text-primary); }
 .filter-chip:hover { border-color: color-mix(in srgb, var(--primary) 24%, var(--border)); transform: translateY(-1px); }
 .filter-checkbox { transition: border-color var(--motion-base) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard); }

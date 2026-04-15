@@ -9,6 +9,7 @@ import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { ExportButton } from "@/components/shared/export-button";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { ButtonLink, FeedbackMessage, PageHeader, Surface } from "@/components/shared/ui";
+import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_ALL_OPTIONS } from "@/lib/constants";
 import { getInternalUsers, getSavedOrderViews, getServiceOrdersPageData, getTechnicians } from "@/lib/data";
 import { buildOrderQuery, getParamValue, parseOrderFilters } from "@/lib/filter-params";
 import { requireSession } from "@/lib/session";
@@ -32,27 +33,13 @@ function createPageHref(baseQuery: URLSearchParams, page: number) {
 }
 
 function getStatusLabel(status?: string) {
-  const statusMap: Record<string, string> = {
-    ABERTA: "Status: Aberta",
-    ENCAMINHADA: "Status: Encaminhada",
-    EM_ACOMPANHAMENTO: "Status: Em acompanhamento",
-    PENDENTE: "Status: Pendente",
-    FINALIZADA: "Status: Finalizada",
-    CANCELADA: "Status: Cancelada"
-  };
-
-  return status ? statusMap[status] ?? `Status: ${status}` : "";
+  const item = ORDER_STATUS_ALL_OPTIONS.find((option) => option.value === status);
+  return item ? `Status: ${item.label}` : status ? `Status: ${status}` : "";
 }
 
 function getPriorityLabel(priority?: string) {
-  const priorityMap: Record<string, string> = {
-    BAIXA: "Prioridade: Baixa",
-    MEDIA: "Prioridade: Média",
-    ALTA: "Prioridade: Alta",
-    URGENTE: "Prioridade: Urgente"
-  };
-
-  return priority ? priorityMap[priority] ?? `Prioridade: ${priority}` : "";
+  const item = ORDER_PRIORITY_OPTIONS.find((option) => option.value === priority);
+  return item ? `Prioridade: ${item.label}` : priority ? `Prioridade: ${priority}` : "";
 }
 
 function buildActiveFilters(filters: OrderFiltersType, technicians: TechnicianItem[], baseQuery: URLSearchParams) {
@@ -68,6 +55,19 @@ function buildActiveFilters(filters: OrderFiltersType, technicians: TechnicianIt
     filters.dueToday ? { label: "Vencendo hoje", href: removeFilterKeys(baseQuery, ["dueToday"]), icon: <CalendarClock className="h-4 w-4 text-[var(--warning)]" /> } : null,
     filters.staleOnly ? { label: "Sem atualização", href: removeFilterKeys(baseQuery, ["staleOnly"]), icon: <TimerReset className="h-4 w-4 text-[var(--text-tertiary)]" /> } : null
   ].filter(Boolean) as Array<{ label: string; href: string; icon?: ReactNode }>;
+}
+
+function createQuickStatHref(filters: OrderFiltersType, key: "lateOnly" | "dueToday" | "staleOnly") {
+  const nextFilters = {
+    ...filters,
+    page: 1,
+    lateOnly: key === "lateOnly",
+    dueToday: key === "dueToday",
+    staleOnly: key === "staleOnly"
+  };
+
+  const query = buildOrderQuery(nextFilters).toString();
+  return query ? `/orders?${query}` : "/orders";
 }
 
 function SavedViewsBlock({ savedViews }: { savedViews: SavedOrderView[] }) {
@@ -191,9 +191,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           {pageData ? (
             <div className="orders-stats-grid grid grid-cols-2 gap-2.5 xl:grid-cols-4">
               <StatCard label="Total" value={pageData.total} caption="visão atual" compact />
-              <StatCard label="Atrasadas" value={lateCount} tone="danger" href="/orders?lateOnly=1" caption="fila crítica" compact />
-              <StatCard label="Hoje" value={dueTodayCount} tone="warning" href="/orders?dueToday=1" caption="vencem hoje" compact />
-              <StatCard label="Sem atualização" value={staleCount} href="/orders?staleOnly=1" caption="pedem revisão" compact />
+              <StatCard label="Atrasadas" value={lateCount} tone="danger" href={createQuickStatHref(filters, "lateOnly")} caption="fila crítica" compact />
+              <StatCard label="Hoje" value={dueTodayCount} tone="warning" href={createQuickStatHref(filters, "dueToday")} caption="vencem hoje" compact />
+              <StatCard label="Sem atualização" value={staleCount} href={createQuickStatHref(filters, "staleOnly")} caption="pedem revisão" compact />
             </div>
           ) : null}
 
