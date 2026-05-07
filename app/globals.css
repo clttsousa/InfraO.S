@@ -1349,3 +1349,66 @@ html[data-theme="dark"] .timeline-dot {
 html[data-theme="dark"] .notification-counter {
   box-shadow: none;
 }
+
+/* V6.4.0 — Paginação operacional */
+.orders-pagination {
+  position: relative;
+  overflow: hidden;
+}
+
+.pagination-page-link,
+.pagination-size-link {
+  display: inline-flex;
+  min-width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius-control) - 4px);
+  padding: 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.pagination-page-link {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.pagination-page-link:hover,
+.pagination-size-link:hover {
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  transform: translateY(-1px);
+}
+
+.pagination-page-link-active,
+.pagination-size-link-active {
+  color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 70%, var(--surface)) !important;
+}
+
+html[data-theme="dark"] .orders-pagination {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .pagination-page-link {
+  background: #101010;
+  border-color: #262626;
+}
+
+html[data-theme="dark"] .pagination-page-link:hover,
+html[data-theme="dark"] .pagination-size-link:hover {
+  background: #1c1c1c;
+}
+
+html[data-theme="dark"] .pagination-page-link-active,
+html[data-theme="dark"] .pagination-size-link-active {
+  color: #bfdbfe !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.28);
+}

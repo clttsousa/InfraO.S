@@ -1,3 +1,15 @@
+# V6.4.0 — Paginação Server-side e Performance da Fila
+
+- Adicionada paginação server-side na tela `/orders`, evitando carregar/renderizar toda a base de O.S. de uma vez.
+- Incluídos controles de navegação por página com links numerados, anterior/próxima e resumo `Mostrando X–Y de Z O.S.`.
+- Adicionada seleção de densidade da listagem com 25, 50 ou 100 ordens por página.
+- O tamanho da página agora é preservado nos filtros, atalhos rápidos, paginação e visões salvas.
+- Busca, filtros, ordenação e exportação continuam respeitando a visão atual.
+- A API `/api/orders` agora retorna dados paginados com `page`, `pageSize`, `total`, `totalPages` e resumo de alertas.
+- A página solicitada é normalizada quando fica fora do intervalo, evitando tela vazia ao reduzir filtros.
+- Cards rápidos de atrasadas, vencendo hoje e sem atualização passaram a usar contagens do banco para a visão filtrada, não apenas a página atual.
+- Adicionados estilos específicos para paginação no visual Dark Graphite.
+
 # V6.3.0 — Dark Graphite Visual Pass
 
 - Aplicada nova paleta dark-first com base preta/grafite: `#050505`, `#080808`, `#101010`, `#161616` e `#1c1c1c`.

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDownWideNarrow, CalendarClock, ChevronsUpDown, Search, SlidersHorizontal, TimerReset } from "lucide-react";
 import { Button } from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_ALL_OPTIONS } from "@/lib/constants";
-import { buildOrderQuery } from "@/lib/filter-params";
+import { buildOrderQuery, DEFAULT_ORDER_PAGE_SIZE } from "@/lib/filter-params";
 import type { OrderFilters as OrderFiltersType, TechnicianItem } from "@/types";
 
 function isChecked(value?: boolean) {
@@ -94,6 +94,7 @@ export function OrderFilters({ technicians, filters }: { technicians: Technician
 
           <div className="flex flex-wrap gap-2 lg:justify-end">
             <input type="hidden" name="page" value="1" />
+            {(filters.pageSize ?? DEFAULT_ORDER_PAGE_SIZE) !== DEFAULT_ORDER_PAGE_SIZE ? <input type="hidden" name="pageSize" value={filters.pageSize} /> : null}
             <Button type="submit" size="sm">Aplicar</Button>
             <a href="/orders" className="btn-base btn-secondary btn-sm">Limpar</a>
           </div>

@@ -131,6 +131,11 @@ export type ServiceOrderListResult = {
   page: number;
   pageSize: number;
   totalPages: number;
+  summary: {
+    late: number;
+    dueToday: number;
+    stale: number;
+  };
 };
 
 export type ServiceOrderNoteItem = {

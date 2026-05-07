@@ -16,7 +16,16 @@ function getFlagValue(value: string | string[] | undefined) {
 
 function getPositiveInt(value: string | string[] | undefined, fallback: number) {
   const parsed = Number(getFilterValue(value));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+export const ORDER_PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+export const DEFAULT_ORDER_PAGE_SIZE = 50;
+
+export function sanitizeOrderPageSize(value: string | string[] | number | undefined, fallback = DEFAULT_ORDER_PAGE_SIZE) {
+  const raw = typeof value === "number" ? value : Number(getFilterValue(value));
+  const parsed = Number.isFinite(raw) ? Math.floor(raw) : fallback;
+  return ORDER_PAGE_SIZE_OPTIONS.includes(parsed as (typeof ORDER_PAGE_SIZE_OPTIONS)[number]) ? parsed : fallback;
 }
 
 const ORDER_SORT_FIELDS: OrderSortField[] = ["deadline", "updated", "opened", "orderNumber", "status", "priority"];
@@ -42,7 +51,7 @@ export function parseOrderFilters(params: Record<string, string | string[] | und
     dueToday: getFlagValue(params.dueToday),
     staleOnly: getFlagValue(params.staleOnly),
     page: getPositiveInt(params.page, 1),
-    pageSize: 25,
+    pageSize: sanitizeOrderPageSize(params.pageSize),
     sortBy: ORDER_SORT_FIELDS.includes(rawSortBy) ? rawSortBy : "deadline",
     sortDir: ORDER_SORT_DIRECTIONS.includes(rawSortDir) ? rawSortDir : "asc"
   };
@@ -60,6 +69,7 @@ export function buildOrderQuery(filters: OrderFilters) {
   if (filters.dueToday) url.set("dueToday", "1");
   if (filters.staleOnly) url.set("staleOnly", "1");
   if (filters.page && filters.page > 1) url.set("page", String(filters.page));
+  if (filters.pageSize && filters.pageSize !== DEFAULT_ORDER_PAGE_SIZE) url.set("pageSize", String(sanitizeOrderPageSize(filters.pageSize)));
   if (filters.sortBy) url.set("sortBy", filters.sortBy);
   if (filters.sortDir) url.set("sortDir", filters.sortDir);
   return url;

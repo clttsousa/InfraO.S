@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { sanitizeOrderPageSize } from "@/lib/filter-params";
 import { formatDateTime } from "@/lib/format";
 import { isUuid } from "@/lib/validation";
 import { getServiceOrderAuditEvents } from "@/lib/server-data/audit";
@@ -7,8 +8,8 @@ import type { OrderFilters, ServiceOrderItem, ServiceOrderListResult, ServiceOrd
 
 async function getServiceOrderRows(filters: OrderFilters, withPagination = true) {
   const built = buildOrderFilters(filters);
-  const pageSize = filters.pageSize && filters.pageSize > 0 ? filters.pageSize : 25;
-  const page = filters.page && filters.page > 0 ? filters.page : 1;
+  const pageSize = sanitizeOrderPageSize(filters.pageSize);
+  const page = filters.page && filters.page > 0 ? Math.floor(filters.page) : 1;
   const offset = (page - 1) * pageSize;
   const paginationSql = withPagination ? `limit $${built.params.length + 1} offset $${built.params.length + 2}` : "";
   const queryParams = withPagination ? [...built.params, pageSize, offset] : built.params;
@@ -31,22 +32,51 @@ export async function getServiceOrders(filters: OrderFilters): Promise<ServiceOr
 
 export async function getServiceOrdersPageData(filters: OrderFilters): Promise<ServiceOrderListResult> {
   const built = buildOrderFilters(filters);
-  const pageSize = filters.pageSize && filters.pageSize > 0 ? filters.pageSize : 25;
-  const page = filters.page && filters.page > 0 ? filters.page : 1;
+  const pageSize = sanitizeOrderPageSize(filters.pageSize);
+  const requestedPage = filters.page && filters.page > 0 ? Math.floor(filters.page) : 1;
 
-  const [countResult, rowsResult] = await Promise.all([
-    query<{ total: string }>(`select count(*)::text as total from service_orders so ${built.clause}`, built.params),
-    getServiceOrderRows(filters, true)
-  ]);
+  const countResult = await query<{ total: string; late: string; due_today: string; stale: string }>(
+    `
+      select
+        count(*)::text as total,
+        count(*) filter (
+          where so.deadline_at is not null
+            and so.status not in ('FINALIZADA', 'CANCELADA')
+            and so.deadline_at < now()
+        )::text as late,
+        count(*) filter (
+          where so.deadline_at is not null
+            and so.status not in ('FINALIZADA', 'CANCELADA')
+            and so.deadline_at >= now()
+            and (so.deadline_at at time zone 'America/Sao_Paulo')::date = (now() at time zone 'America/Sao_Paulo')::date
+        )::text as due_today,
+        count(*) filter (
+          where so.updated_at < now() - interval '24 hours'
+            and so.status not in ('FINALIZADA', 'CANCELADA')
+        )::text as stale
+      from service_orders so
+      ${built.clause}
+    `,
+    built.params
+  );
+  const countRow = countResult.rows[0];
+  const total = Number(countRow?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
 
-  const total = Number(countResult.rows[0]?.total ?? 0);
+  const rowsResult = await getServiceOrderRows({ ...filters, page, pageSize }, true);
 
   return {
     items: rowsResult.rows.map(mapOrderRow),
     total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(total / pageSize))
+    totalPages,
+    summary: {
+      late: Number(countRow?.late ?? 0),
+      dueToday: Number(countRow?.due_today ?? 0),
+      stale: Number(countRow?.stale ?? 0)
+    }
   };
 }
 

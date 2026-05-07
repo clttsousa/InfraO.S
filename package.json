@@ -1,6 +1,6 @@
 {
   "name": "infraos",
-  "version": "5.1.0",
+  "version": "6.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -11,7 +11,7 @@ import { SubmitButton } from "@/components/shared/form-submit-button";
 import { ButtonLink, FeedbackMessage, PageHeader, Surface } from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_ALL_OPTIONS } from "@/lib/constants";
 import { getInternalUsers, getSavedOrderViews, getServiceOrdersPageData, getTechnicians } from "@/lib/data";
-import { buildOrderQuery, getParamValue, parseOrderFilters } from "@/lib/filter-params";
+import { buildOrderQuery, DEFAULT_ORDER_PAGE_SIZE, getParamValue, ORDER_PAGE_SIZE_OPTIONS, parseOrderFilters } from "@/lib/filter-params";
 import { requireSession } from "@/lib/session";
 import type { InternalUserItem, OrderFilters as OrderFiltersType, SavedOrderView, TechnicianItem } from "@/types";
 
@@ -29,7 +29,41 @@ function removeFilterKeys(baseQuery: URLSearchParams, keys: string[]) {
 function createPageHref(baseQuery: URLSearchParams, page: number) {
   const url = new URLSearchParams(baseQuery);
   if (page <= 1) url.delete("page"); else url.set("page", String(page));
-  return `/orders?${url.toString()}`;
+  const query = url.toString();
+  return query ? `/orders?${query}` : "/orders";
+}
+
+function createPageSizeHref(baseQuery: URLSearchParams, pageSize: number) {
+  const url = new URLSearchParams(baseQuery);
+  url.delete("page");
+  if (pageSize === DEFAULT_ORDER_PAGE_SIZE) url.delete("pageSize"); else url.set("pageSize", String(pageSize));
+  const query = url.toString();
+  return query ? `/orders?${query}` : "/orders";
+}
+
+type PaginationItem = number | "ellipsis-start" | "ellipsis-end";
+
+function getPaginationRange(currentPage: number, totalPages: number): PaginationItem[] {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  if (currentPage <= 3) [2, 3, 4].forEach((page) => pages.add(page));
+  if (currentPage >= totalPages - 2) [totalPages - 3, totalPages - 2, totalPages - 1].forEach((page) => pages.add(page));
+
+  const normalizedPages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+
+  const range: PaginationItem[] = [];
+  normalizedPages.forEach((page, index) => {
+    const previous = normalizedPages[index - 1];
+    if (previous && page - previous > 1) {
+      range.push(previous === 1 ? "ellipsis-start" : "ellipsis-end");
+    }
+    range.push(page);
+  });
+
+  return range;
 }
 
 function getStatusLabel(status?: string) {
@@ -68,6 +102,67 @@ function createQuickStatHref(filters: OrderFiltersType, key: "lateOnly" | "dueTo
 
   const query = buildOrderQuery(nextFilters).toString();
   return query ? `/orders?${query}` : "/orders";
+}
+
+function PaginationFooter({ baseQuery, page, totalPages, pageSize, total, pageStart, pageEnd }: { baseQuery: URLSearchParams; page: number; totalPages: number; pageSize: number; total: number; pageStart: number; pageEnd: number }) {
+  const range = getPaginationRange(page, totalPages);
+  const hasPrevious = page > 1;
+  const hasNext = page < totalPages;
+
+  return (
+    <div className="orders-pagination mt-4 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-sm text-[var(--text-secondary)] shadow-[var(--shadow-sm)] lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0 space-y-1">
+        <div className="font-medium text-[var(--text-primary)]">
+          Mostrando <span className="app-number">{pageStart}</span>–<span className="app-number">{pageEnd}</span> de <span className="app-number">{total}</span> O.S.
+        </div>
+        <div className="text-xs text-[var(--text-tertiary)]">Paginação server-side · página {page} de {totalPages}</div>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <div className="inline-flex w-fit items-center rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-1">
+          {ORDER_PAGE_SIZE_OPTIONS.map((option) => (
+            <Link
+              key={option}
+              href={createPageSizeHref(baseQuery, option)}
+              className={`pagination-size-link ${pageSize === option ? "pagination-size-link-active" : ""}`}
+              aria-current={pageSize === option ? "page" : undefined}
+            >
+              {option}
+            </Link>
+          ))}
+          <span className="px-2 text-xs text-[var(--text-tertiary)]">por página</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ButtonLink href={createPageHref(baseQuery, page - 1)} variant="secondary" size="sm" className={hasPrevious ? "" : "pointer-events-none opacity-50"}>
+            <ChevronLeft className="h-4 w-4" />Anterior
+          </ButtonLink>
+
+          <div className="hidden items-center gap-1 md:flex">
+            {range.map((item, index) => (
+              typeof item === "number" ? (
+                <Link
+                  key={item}
+                  href={createPageHref(baseQuery, item)}
+                  aria-current={item === page ? "page" : undefined}
+                  className={`pagination-page-link ${item === page ? "pagination-page-link-active" : ""}`}
+                >
+                  {item}
+                </Link>
+              ) : (
+                <span key={`${item}-${index}`} className="px-1.5 text-[var(--text-tertiary)]">...</span>
+              )
+            ))}
+          </div>
+
+          <span className="badge-base badge-neutral md:hidden">{page}/{totalPages}</span>
+          <ButtonLink href={createPageHref(baseQuery, page + 1)} variant="secondary" size="sm" className={hasNext ? "" : "pointer-events-none opacity-50"}>
+            Próxima<ChevronRight className="h-4 w-4" />
+          </ButtonLink>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function SavedViewsBlock({ savedViews }: { savedViews: SavedOrderView[] }) {
@@ -165,9 +260,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   const activeFilters = buildActiveFilters(filters, technicians, baseQuery);
   const filteredItems = pageData?.items ?? [];
-  const lateCount = filteredItems.filter((order) => order.isLate).length;
-  const dueTodayCount = filteredItems.filter((order) => order.isDueToday).length;
-  const staleCount = filteredItems.filter((order) => order.isStale).length;
+  const lateCount = pageData?.summary.late ?? filteredItems.filter((order) => order.isLate).length;
+  const dueTodayCount = pageData?.summary.dueToday ?? filteredItems.filter((order) => order.isDueToday).length;
+  const staleCount = pageData?.summary.stale ?? filteredItems.filter((order) => order.isStale).length;
   const clearAllHref = removeFilterKeys(baseQuery, ["q", "technician", "status", "priority", "from", "to", "lateOnly", "dueToday", "staleOnly", "sortBy", "sortDir", "page", "selected", "action", "success", "error"]);
   const pageStart = pageData ? (pageData.page - 1) * pageData.pageSize + 1 : 0;
   const pageEnd = pageData ? Math.min(pageData.total, pageData.page * pageData.pageSize) : 0;
@@ -243,18 +338,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         <div className="px-4 pb-5 md:px-5">
           <OrderWorkspaceClient baseQueryString={baseQuery.toString()} items={pageData?.items ?? []} technicians={technicians} internalUsers={internalUsers} initialSelectedId={selectedId ?? undefined} initialAction={action ?? undefined} success={success ?? undefined} error={error ?? undefined} />
 
-          {pageData && pageData.totalPages > 1 ? (
-            <div className="mt-4 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <span>Página <span className="app-number font-semibold text-[var(--text-primary)]">{pageData.page}</span> de <span className="app-number font-semibold text-[var(--text-primary)]">{pageData.totalPages}</span></span>
-                <div className="text-xs text-[var(--text-tertiary)]">Mostrando {pageStart}–{pageEnd} de {pageData.total} registros</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <ButtonLink href={createPageHref(baseQuery, pageData.page - 1)} variant="secondary" size="sm" className={pageData.page <= 1 ? "pointer-events-none opacity-50" : ""}><ChevronLeft className="h-4 w-4" />Anterior</ButtonLink>
-                <span className="badge-base badge-primary">{pageData.page}</span>
-                <ButtonLink href={createPageHref(baseQuery, pageData.page + 1)} variant="secondary" size="sm" className={pageData.page >= pageData.totalPages ? "pointer-events-none opacity-50" : ""}>Próxima<ChevronRight className="h-4 w-4" /></ButtonLink>
-              </div>
-            </div>
+          {pageData && pageData.total > 0 ? (
+            <PaginationFooter
+              baseQuery={baseQuery}
+              page={pageData.page}
+              totalPages={pageData.totalPages}
+              pageSize={pageData.pageSize}
+              total={pageData.total}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+            />
           ) : null}
         </div>
       </div>
