@@ -1,3 +1,10 @@
+# V6.4.1 — Hotfix Auditoria em Produção
+
+- Corrigido erro ao abrir `/audit` em produção quando o Postgres retorna `created_at` como objeto `Date` em vez de string ISO.
+- Normalizada a data dos eventos de auditoria antes de calcular os eventos do dia e renderizar a lista.
+- Adicionado fallback seguro para a tela de auditoria quando a migration `database/14_audit_events.sql` ainda não foi aplicada no banco de produção.
+- A tela de auditoria e a auditoria dentro do drawer da O.S. deixam de quebrar a aplicação caso a tabela `audit_events` ainda não exista.
+
 # V6.4.0 — Paginação Server-side e Performance da Fila
 
 - Adicionada paginação server-side na tela `/orders`, evitando carregar/renderizar toda a base de O.S. de uma vez.

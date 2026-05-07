@@ -17,8 +17,21 @@ type AuditEventRow = {
   new_value: unknown;
   note: string | null;
   metadata: Record<string, unknown> | null;
-  created_at: string;
+  created_at: string | Date | null;
 };
+
+function toIsoString(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function isMissingAuditSchemaError(error: unknown) {
+  const candidate = error as { code?: string; message?: string };
+  if (candidate.code === "42P01" || candidate.code === "42703") return true;
+  return typeof candidate.message === "string" && candidate.message.toLowerCase().includes("audit_events");
+}
 
 type AuditEventsFilters = {
   orderQuery?: string;
@@ -30,6 +43,8 @@ type AuditEventsFilters = {
 };
 
 function mapAuditEvent(row: AuditEventRow): AuditEventItem {
+  const createdAtIso = toIsoString(row.created_at);
+
   return {
     id: row.id,
     entityType: row.entity_type,
@@ -44,43 +59,48 @@ function mapAuditEvent(row: AuditEventRow): AuditEventItem {
     newValue: row.new_value ?? null,
     note: row.note,
     metadata: row.metadata ?? null,
-    when: formatDateTime(row.created_at),
-    createdAtIso: row.created_at
+    when: formatDateTime(createdAtIso),
+    createdAtIso
   };
 }
 
 export async function getServiceOrderAuditEvents(serviceOrderId: string): Promise<AuditEventItem[]> {
   if (!isUuid(serviceOrderId)) return [];
 
-  const result = await query<AuditEventRow>(
-    `
-      select
-        ae.id,
-        ae.entity_type,
-        ae.entity_id::text as entity_id,
-        so.order_number as entity_label,
-        ae.scope,
-        ae.action_type,
-        ae.field_name,
-        ae.actor_user_id::text as actor_user_id,
-        ae.actor_name,
-        ae.old_value,
-        ae.new_value,
-        ae.note,
-        ae.metadata,
-        ae.created_at
-      from audit_events ae
-      left join service_orders so
-        on ae.entity_type = 'service_order'
-       and so.id = ae.entity_id
-      where ae.entity_type = 'service_order'
-        and ae.entity_id = $1::uuid
-      order by ae.created_at desc
-    `,
-    [serviceOrderId]
-  );
+  try {
+    const result = await query<AuditEventRow>(
+      `
+        select
+          ae.id,
+          ae.entity_type,
+          ae.entity_id::text as entity_id,
+          so.order_number as entity_label,
+          ae.scope,
+          ae.action_type,
+          ae.field_name,
+          ae.actor_user_id::text as actor_user_id,
+          ae.actor_name,
+          ae.old_value,
+          ae.new_value,
+          ae.note,
+          ae.metadata,
+          ae.created_at
+        from audit_events ae
+        left join service_orders so
+          on ae.entity_type = 'service_order'
+         and so.id = ae.entity_id
+        where ae.entity_type = 'service_order'
+          and ae.entity_id = $1::uuid
+        order by ae.created_at desc
+      `,
+      [serviceOrderId]
+    );
 
-  return result.rows.map(mapAuditEvent);
+    return result.rows.map(mapAuditEvent);
+  } catch (error) {
+    if (isMissingAuditSchemaError(error)) return [];
+    throw error;
+  }
 }
 
 export async function getAuditEvents(filters: AuditEventsFilters = {}): Promise<AuditEventItem[]> {
@@ -122,34 +142,39 @@ export async function getAuditEvents(filters: AuditEventsFilters = {}): Promise<
   const limitIndex = params.length;
   const whereClause = where.length ? `where ${where.join(" and ")}` : "";
 
-  const result = await query<AuditEventRow>(
-    `
-      select
-        ae.id,
-        ae.entity_type,
-        ae.entity_id::text as entity_id,
-        so.order_number as entity_label,
-        ae.scope,
-        ae.action_type,
-        ae.field_name,
-        ae.actor_user_id::text as actor_user_id,
-        ae.actor_name,
-        ae.old_value,
-        ae.new_value,
-        ae.note,
-        ae.metadata,
-        ae.created_at
-      from audit_events ae
-      left join service_orders so
-        on ae.entity_type = 'service_order'
-       and so.id = ae.entity_id
-      ${whereClause}
-      order by ae.created_at desc
-      limit $${limitIndex}
-    `,
-    params
-  );
+  try {
+    const result = await query<AuditEventRow>(
+      `
+        select
+          ae.id,
+          ae.entity_type,
+          ae.entity_id::text as entity_id,
+          so.order_number as entity_label,
+          ae.scope,
+          ae.action_type,
+          ae.field_name,
+          ae.actor_user_id::text as actor_user_id,
+          ae.actor_name,
+          ae.old_value,
+          ae.new_value,
+          ae.note,
+          ae.metadata,
+          ae.created_at
+        from audit_events ae
+        left join service_orders so
+          on ae.entity_type = 'service_order'
+         and so.id = ae.entity_id
+        ${whereClause}
+        order by ae.created_at desc
+        limit $${limitIndex}
+      `,
+      params
+    );
 
-  return result.rows.map(mapAuditEvent);
+    return result.rows.map(mapAuditEvent);
+  } catch (error) {
+    if (isMissingAuditSchemaError(error)) return [];
+    throw error;
+  }
 }
 
