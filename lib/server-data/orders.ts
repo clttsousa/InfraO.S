@@ -10,7 +10,8 @@ async function getServiceOrderRows(filters: OrderFilters, withPagination = true)
   const pageSize = filters.pageSize && filters.pageSize > 0 ? filters.pageSize : 25;
   const page = filters.page && filters.page > 0 ? filters.page : 1;
   const offset = (page - 1) * pageSize;
-  const paginationSql = withPagination ? `limit ${pageSize} offset ${offset}` : "";
+  const paginationSql = withPagination ? `limit $${built.params.length + 1} offset $${built.params.length + 2}` : "";
+  const queryParams = withPagination ? [...built.params, pageSize, offset] : built.params;
 
   return query<ServiceOrderRow>(
     `
@@ -19,7 +20,7 @@ async function getServiceOrderRows(filters: OrderFilters, withPagination = true)
       ${built.orderBy}
       ${paginationSql}
     `,
-    built.params
+    queryParams
   );
 }
 

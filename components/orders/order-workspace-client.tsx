@@ -66,16 +66,23 @@ export function OrderWorkspaceClient({
   const [loadError, setLoadError] = useState<string | null>(null);
   const detailCacheRef = useRef<Map<string, ServiceOrderDetail>>(new Map());
   const currentRequestId = useRef<string | null>(null);
+  const listAbortRef = useRef<AbortController | null>(null);
+  const detailAbortRef = useRef<AbortController | null>(null);
 
   const baseHref = useMemo(() => buildOrdersHref(baseQueryString, selectedId), [baseQueryString, selectedId]);
 
   const refreshList = useCallback(async () => {
+    listAbortRef.current?.abort();
+    const controller = new AbortController();
+    listAbortRef.current = controller;
+
     try {
-      const response = await fetch(`/api/orders${baseQueryString ? `?${baseQueryString}` : ""}`, { cache: "no-store" });
+      const response = await fetch(`/api/orders${baseQueryString ? `?${baseQueryString}` : ""}`, { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Falha ao atualizar a fila de ordens.");
       const payload = (await response.json()) as { items: ServiceOrderItem[] };
       setOrders(payload.items ?? []);
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       // Falha transitória ignorada; próximo evento ou interação tenta novamente.
     }
   }, [baseQueryString]);
@@ -117,6 +124,9 @@ export function OrderWorkspaceClient({
     setDetail(null);
     setIsLoading(true);
     setLoadError(null);
+    detailAbortRef.current?.abort();
+    const controller = new AbortController();
+    detailAbortRef.current = controller;
 
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -124,6 +134,7 @@ export function OrderWorkspaceClient({
         credentials: "same-origin",
         headers: { Accept: "application/json" },
         cache: "no-store",
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -142,6 +153,7 @@ export function OrderWorkspaceClient({
         setLoadError("A ordem selecionada não foi encontrada.");
       }
     } catch (fetchError) {
+      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
       if (currentRequestId.current !== orderId) return;
       setDetail(null);
       setLoadError(fetchError instanceof Error ? fetchError.message : "Não foi possível carregar os detalhes da O.S.");
@@ -213,6 +225,15 @@ export function OrderWorkspaceClient({
       }
     });
   }, [refreshDetail, refreshList, selectedId, subscribe]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+      if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+      listAbortRef.current?.abort();
+      detailAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {

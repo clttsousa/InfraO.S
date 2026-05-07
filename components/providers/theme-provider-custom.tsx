@@ -18,14 +18,14 @@ export interface Theme {
 
 const defaultThemes: Record<string, Theme> = {
   default: {
-    name: "Padrão",
+    name: "Graphite",
     colors: {
-      primary: "#0066ff",
-      secondary: "#6366f1",
-      success: "#10b981",
+      primary: "#3b82f6",
+      secondary: "#71717a",
+      success: "#22c55e",
       warning: "#f59e0b",
       danger: "#ef4444",
-      info: "#0ea5e9"
+      info: "#38bdf8"
     }
   },
   ocean: {

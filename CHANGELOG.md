@@ -1,3 +1,12 @@
+# V6.3.0 — Dark Graphite Visual Pass
+
+- Aplicada nova paleta dark-first com base preta/grafite: `#050505`, `#080808`, `#101010`, `#161616` e `#1c1c1c`.
+- Reduzido o aspecto azul/slate do dark mode anterior, deixando o visual mais técnico, sóbrio e premium.
+- Refinados cards, tabelas, sidebar, topbar, drawer, filtros, formulários, login, skeletons, empty states, notificações e badges para o dark mode.
+- Ajustadas cores de status no dark: azul para andamento, âmbar para atenção, vermelho para atraso/erro e verde para finalizado/sucesso.
+- Removido excesso de sombras, brilhos e gradientes no modo escuro, priorizando leitura e operação.
+- Tema padrão inicial passa a abrir em modo escuro quando o usuário ainda não possui preferência salva.
+
 # Changelog
 
 ## v5.2.2
