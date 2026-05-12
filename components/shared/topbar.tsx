@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, Plus, Search, Shield, LayoutDashboard, FileText, Users, Settings } from "lucide-react";
+import { Bell, CalendarClock, Menu, Plus, Search, Shield, LayoutDashboard, FileText, Users, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SessionUser } from "@/lib/auth";
@@ -19,6 +19,7 @@ const titleByPathname: Record<string, string> = {
   "/technicians": "Técnicos",
   "/users": "Usuários",
   "/notifications": "Notificações",
+  "/intervencoes": "Intervenções",
   "/reports": "Relatórios",
   "/settings": "Configurações",
   "/profile": "Meu acesso"
@@ -34,6 +35,7 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
     { id: "new-order", label: "Nova O.S.", description: "Criar nova ordem de serviço", icon: <Plus className="h-4 w-4" />, href: "/orders/new", shortcut: "⌘N" },
     { id: "orders", label: "Ordens", description: "Abrir a listagem completa de ordens", icon: <FileText className="h-4 w-4" />, href: "/orders", shortcut: "⌘O" },
     { id: "notifications", label: "Notificações", description: "Abrir a central de notificações operacionais", icon: <Bell className="h-4 w-4" />, href: "/notifications" },
+    { id: "interventions", label: "Intervenções", description: "Abrir intervenções programadas", icon: <CalendarClock className="h-4 w-4" />, href: "/intervencoes" },
     { id: "users", label: "Usuários", description: "Gerenciar equipe interna", icon: <Users className="h-4 w-4" />, href: "/users" },
     { id: "settings", label: "Configurações", description: "Preferências e área administrativa", icon: <Settings className="h-4 w-4" />, href: "/settings" },
     { id: "alerts", label: "Alertas", description: "Ver ordens críticas ou atrasadas", icon: <Bell className="h-4 w-4" />, action: () => router.push("/orders?lateOnly=1") }

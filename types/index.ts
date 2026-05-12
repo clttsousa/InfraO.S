@@ -18,10 +18,84 @@ export type OrderStatus =
 export type OrderPriorityDb = "BAIXA" | "MEDIA" | "ALTA" | "URGENTE";
 export type OrderPriority = "Baixa" | "Média" | "Alta" | "Urgente";
 export type UserRole = "ADMIN" | "OPERADOR";
+
+
+export type InterventionStatusDb = "PROGRAMADO" | "EM_ACOMPANHAMENTO" | "CONCLUIDO" | "CANCELADO" | "ATRASADO";
+export type InterventionTypeDb = "TROCA_POSTES" | "MANUTENCAO_ELETRICA" | "DESLIGAMENTO_PROGRAMADO" | "OBRA_TERCEIROS" | "REMANEJAMENTO_REDE" | "OUTRO";
+export type InterventionSourceDb = "WHATSAPP" | "EMAIL" | "TELEFONE" | "INTERNO" | "OUTRO";
+export type InterventionQuickFilter = "all" | "today" | "tomorrow" | "week" | "late" | "concluded" | "canceled";
+
+export type InterventionPointItem = {
+  id: string;
+  label: string;
+  mapsUrl: string;
+  createdAt: string;
+  updatedAt?: string | null;
+};
+
+export type InterventionItem = {
+  id: string;
+  title: string;
+  type: string;
+  rawType: InterventionTypeDb;
+  locationName: string;
+  status: string;
+  rawStatus: InterventionStatusDb;
+  source: string;
+  rawSource: InterventionSourceDb;
+  startAt: string;
+  endAt: string;
+  startAtIso: string;
+  endAtIso: string;
+  dateLabel: string;
+  timeLabel: string;
+  pointsCount: number;
+  createdByName: string;
+  responsibleId?: string | null;
+  responsibleName: string;
+  notes?: string | null;
+  isLate: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InterventionDetail = InterventionItem & {
+  originalMessage?: string | null;
+  dateInput: string;
+  startTimeInput: string;
+  endTimeInput: string;
+  points: InterventionPointItem[];
+};
+
+export type InterventionSummary = {
+  today: number;
+  tomorrow: number;
+  week: number;
+  late: number;
+  concluded: number;
+};
+
+export type InterventionListResult = {
+  items: InterventionItem[];
+  summary: InterventionSummary;
+};
+
+export type InterventionFilters = {
+  q?: string;
+  quick?: InterventionQuickFilter;
+  type?: string;
+  location?: string;
+  status?: string;
+  source?: string;
+  responsibleId?: string;
+  from?: string;
+  to?: string;
+};
+
 export type PresenceStatus = "ONLINE" | "AUSENTE" | "OFFLINE";
 
-export type AuditScope = "order" | "user" | "technician" | "system";
-export type AuditEntityType = "service_order" | "internal_user" | "technician" | "system";
+export type AuditScope = "order" | "user" | "technician" | "system" | "intervention";
+export type AuditEntityType = "service_order" | "internal_user" | "technician" | "system" | "infra_event";
 export type AuditFieldName =
   | "status"
   | "deadline_at"
@@ -29,7 +103,10 @@ export type AuditFieldName =
   | "support_technician_ids"
   | "internal_owner_id"
   | "priority"
-  | "order_number";
+  | "order_number"
+  | "start_at"
+  | "end_at"
+  | "location_name";
 export type AuditActionType =
   | "order.created"
   | "order.updated"
@@ -39,7 +116,12 @@ export type AuditActionType =
   | "order.support_team_changed"
   | "order.finalized"
   | "order.reopened"
-  | "order.canceled";
+  | "order.canceled"
+  | "intervention.created"
+  | "intervention.updated"
+  | "intervention.status_changed"
+  | "intervention.canceled"
+  | "intervention.concluded";
 
 export type AuditEventItem = {
   id: string;
@@ -194,6 +276,27 @@ export type DashboardData = {
   stale: ServiceOrderItem[];
   activities: ActivityItem[];
   technicianSummary: TechnicianItem[];
+  interventions: DashboardInterventionItem[];
+  interventionSummary: {
+    today: number;
+    tomorrow: number;
+    late: number;
+  };
+};
+
+export type DashboardInterventionItem = {
+  id: string;
+  title: string;
+  locationName: string;
+  startAt: string;
+  endAt: string;
+  startAtIso: string;
+  endAtIso: string;
+  timeLabel: string;
+  pointsCount: number;
+  status: string;
+  rawStatus: InterventionStatusDb;
+  isLate: boolean;
 };
 
 export type OrderSortField = "deadline" | "updated" | "opened" | "orderNumber" | "status" | "priority";
@@ -275,7 +378,7 @@ export type NotificationItem = {
   href: string;
   level: NotificationLevel;
   when?: string;
-  category: "late" | "dueToday" | "stale" | "activity";
+  category: "late" | "dueToday" | "stale" | "activity" | "intervention";
 };
 
 export type NotificationSummary = {
@@ -285,12 +388,14 @@ export type NotificationSummary = {
     dueToday: number;
     stale: number;
     recentActivities: number;
+    interventions: number;
   };
   items: NotificationItem[];
   activeAlertIds: {
     late: string[];
     dueToday: string[];
     stale: string[];
+    intervention: string[];
   };
   checkedAt: string;
 };

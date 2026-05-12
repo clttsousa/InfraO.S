@@ -10,12 +10,15 @@ export type RealtimeEventType =
   | "order.assigned_changed"
   | "notification.created"
   | "user.presence_changed"
-  | "user.updated";
+  | "user.updated"
+  | "intervention.created"
+  | "intervention.updated"
+  | "intervention.status_changed";
 
 export type RealtimeEvent = {
   id: string;
   type: RealtimeEventType;
-  scope: "orders" | "dashboard" | "notifications" | "users" | "system";
+  scope: "orders" | "dashboard" | "notifications" | "users" | "system" | "interventions";
   entityId?: string;
   timestamp: string;
   payload?: Record<string, unknown>;

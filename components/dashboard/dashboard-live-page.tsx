@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CalendarClock, Radio, TimerReset } from "lucide-react";
+import { CalendarClock, MapPin, Radio } from "lucide-react";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { DashboardTable } from "@/components/dashboard/dashboard-table";
 import { useRealtime } from "@/components/realtime/realtime-provider";
@@ -23,6 +23,22 @@ function TechnicianLoadBar({ openOrders, lateOrders, pendingOrders }: { openOrde
       <div className="-mt-2.5 h-full bg-[var(--warning)] transition-all duration-500" style={{ width: `${pendingPct}%`, marginLeft: `${healthyPct}%` }} />
       <div className="-mt-2.5 h-full bg-[var(--danger)] transition-all duration-500" style={{ width: `${latePct}%`, marginLeft: `${healthyPct + pendingPct}%` }} />
     </div>
+  );
+}
+
+
+function InterventionDashboardCard({ item }: { item: NonNullable<DashboardData["interventions"]>[number] }) {
+  return (
+    <Link href={`/intervencoes?selected=${item.id}`} className="block rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3 transition hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-[var(--shadow-sm)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{item.title}</div>
+          <div className="mt-1 flex items-center gap-1 text-sm text-[var(--text-secondary)]"><MapPin className="h-3.5 w-3.5" />{item.locationName}</div>
+        </div>
+        <span className={`badge-base ${item.isLate ? "badge-danger" : item.rawStatus === "EM_ACOMPANHAMENTO" ? "badge-warning" : "badge-primary"}`}>{item.status}</span>
+      </div>
+      <div className="mt-2 text-xs text-[var(--text-tertiary)]">{item.startAt} · {item.timeLabel} · {item.pointsCount} ponto{item.pointsCount === 1 ? "" : "s"}</div>
+    </Link>
   );
 }
 
@@ -73,7 +89,7 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
 
   useEffect(() => {
     return subscribe((event) => {
-      if (!["order.created", "order.updated", "order.status_changed", "order.deadline_changed", "order.assigned_changed", "notification.created"].includes(event.type)) {
+      if (!["order.created", "order.updated", "order.status_changed", "order.deadline_changed", "order.assigned_changed", "intervention.created", "intervention.updated", "intervention.status_changed", "notification.created"].includes(event.type)) {
         return;
       }
       if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
@@ -122,6 +138,26 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
             </div>
 
             <div className="space-y-6">
+              <Surface className="animate-slideInUp p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="app-title text-lg font-semibold">Intervenções próximas</h3>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">Hoje, amanhã e atrasadas para não deixar aviso de WhatsApp esquecido.</p>
+                  </div>
+                  <Link href="/intervencoes" className="badge-base badge-primary"><CalendarClock className="h-3.5 w-3.5" />abrir</Link>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs text-[var(--text-secondary)]">
+                  <div className="rounded-[var(--radius-control)] border border-[var(--border)] px-2 py-2"><div className="app-number text-base text-[var(--text-primary)]">{data.interventionSummary.today}</div>Hoje</div>
+                  <div className="rounded-[var(--radius-control)] border border-[var(--border)] px-2 py-2"><div className="app-number text-base text-[var(--text-primary)]">{data.interventionSummary.tomorrow}</div>Amanhã</div>
+                  <div className="rounded-[var(--radius-control)] border border-[var(--border)] px-2 py-2"><div className="app-number text-base text-[var(--danger)]">{data.interventionSummary.late}</div>Atrasadas</div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {data.interventions.length === 0 ? (
+                    <EmptyState compact title="Sem intervenções próximas" description="Os lembretes de hoje, amanhã e atrasados aparecerão aqui." />
+                  ) : data.interventions.map((item) => <InterventionDashboardCard key={item.id} item={item} />)}
+                </div>
+              </Surface>
+
               <Surface className="animate-slideInUp p-5">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="app-title text-lg font-semibold">Resumo por técnico</h3>

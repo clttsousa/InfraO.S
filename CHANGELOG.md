@@ -1,3 +1,51 @@
+# V6.9.0 — Notificação tipo app / PWA
+
+- Configurado o InfraOS como PWA com `public/manifest.webmanifest`, ícones básicos e metadata de instalação.
+- Criado `public/sw.js` com foco exclusivo em Push Notification e clique em notificação, sem cache agressivo/offline que possa deixar telas desatualizadas.
+- Adicionada área **Notificações neste dispositivo** na central `/notifications` e em Configurações.
+- Criadas APIs autenticadas para status, inscrição, desativação e teste de push: `/api/push/status`, `/api/push/subscribe`, `/api/push/unsubscribe` e `/api/push/test`.
+- Criada migration `database/17_pwa_push_notifications.sql` com as tabelas `push_subscriptions` e `notification_delivery_logs`.
+- A rotina `/api/cron/reminders` agora envia push PWA para dispositivos autorizados após criar notificações internas.
+- Entregas internas e PWA passam a ter logs por canal, status, usuário, data e erro quando houver falha.
+- Subscriptions inválidas retornando `404` ou `410` são desativadas automaticamente.
+- Criada implementação local de Web Push/VAPID sem adicionar dependência externa obrigatória.
+- Adicionado script `npm run generate:vapid` para gerar chaves compatíveis.
+- `.env.example` atualizado com `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT`.
+- README atualizado com guia de configuração PWA, variáveis de ambiente, teste e limitações de navegador.
+
+# V6.8.0 — Lembretes Internos e Notificações no Painel
+
+- Criada a migration `database/16_reminders_notifications.sql` com as tabelas `reminders` e `app_notifications`.
+- Ao criar, editar ou alterar status de uma intervenção, o InfraOS agora sincroniza lembretes automáticos.
+- Lembretes padrão gerados: `one_day_before` às 08:00 e `same_day` às 08:00 no fuso operacional `America/Sao_Paulo`.
+- Estrutura de banco preparada para `two_hours_before` e `thirty_minutes_before` em versões futuras.
+- Criada a rota protegida `/api/cron/reminders` para processar lembretes pendentes.
+- A rota cron valida `CRON_SECRET` por `Authorization: Bearer`, `x-cron-secret` ou query `?secret=` para teste controlado.
+- Adicionado `vercel.json` com cron diário `0 11 * * *`, equivalente a 08:00 BRT.
+- Lembretes processados criam notificações internas persistidas para o responsável pela intervenção ou, se não houver responsável, para usuários ativos.
+- Notificações de intervenções atrasadas são criadas de forma idempotente para evitar duplicidade.
+- O sino de notificações agora inclui lembretes de intervenções e permite marcar todas como lidas.
+- A página `/notifications` ganhou card de Intervenções e ação para marcar notificações internas como lidas.
+- O dashboard recebeu o bloco **Intervenções próximas**, mostrando hoje, amanhã e atrasadas com link direto para o detalhe.
+- Eventos de notificação continuam usando realtime/SSE para atualizar o sino, dashboard e painel sem recarregar a página.
+- Criado `.env.example` com `CRON_SECRET` e variáveis principais.
+- README atualizado com instruções de migration, cron e teste manual protegido.
+
+# V6.7.0 — Intervenções Programadas
+
+- Criado o novo módulo `/intervencoes` para registrar e acompanhar intervenções programadas recebidas por WhatsApp, e-mail, telefone ou cadastro interno.
+- Adicionado item **Intervenções** no menu lateral seguindo o padrão visual do InfraOS.
+- Implementada listagem com cards de resumo para Hoje, Amanhã, Esta semana, Atrasadas e Concluídas.
+- Incluídos filtros rápidos e filtros avançados por busca, tipo, localidade, status, origem, responsável e período.
+- Criado fluxo de cadastro com campo de mensagem original, parser local por regex e campos editáveis para título, tipo, localidade, data, horários, status, origem, responsável e observações.
+- O parser identifica datas no formato `DD/MM/YYYY`, faixa de horário, links do Google Maps e pontos como `POSTE 01`, `POSTE 02` etc., sem depender de IA/API externa.
+- Adicionada estrutura de múltiplos pontos/localizações com label e link do Maps, incluindo botão **Abrir no Maps** no detalhe.
+- Criado drawer lateral de detalhes no desktop e comportamento responsivo no mobile, com edição, alteração de status e confirmação para conclusão/cancelamento.
+- Incluídas as tabelas `infra_events` e `infra_event_points` na migration `database/15_interventions.sql`.
+- Auditoria forte foi ampliada para registrar ações de intervenção como criação, edição, mudança de status, conclusão e cancelamento.
+- Adicionados endpoints `/api/interventions` e `/api/interventions/[id]` para atualização incremental da lista e do drawer.
+- Typecheck concluído com sucesso e build compilado corretamente no ambiente de validação.
+
 # V6.4.1 — Hotfix Auditoria em Produção
 
 - Corrigido erro ao abrir `/audit` em produção quando o Postgres retorna `created_at` como objeto `Date` em vez de string ISO.

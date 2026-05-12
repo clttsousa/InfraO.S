@@ -2,8 +2,9 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, BellRing, CalendarClock, Clock3, Activity, Radio } from "lucide-react";
+import { AlertTriangle, BellRing, CalendarClock, Clock3, Activity, Radio, CheckCheck } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
+import { DeviceNotificationSettings } from "@/components/pwa/device-notification-settings";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { EmptyState, PageHeader, Surface } from "@/components/shared/ui";
 import type { NotificationSummary } from "@/types";
@@ -21,6 +22,14 @@ function NotificationOverviewCard({ title, value, description, tone, icon }: { t
       </div>
     </Surface>
   );
+}
+
+async function markAllNotificationsRead() {
+  await fetch("/api/notifications/mark-read", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ all: true })
+  });
 }
 
 async function fetchNotificationSummary() {
@@ -60,14 +69,17 @@ export function NotificationsLivePage({ initialSummary }: { initialSummary: Noti
       <PageHeader
         eyebrow="Operação ativa"
         title="Central de notificações"
-        description="Resumo operacional derivado das ordens atrasadas, vencimentos do dia e filas sem atualização."
-        actions={<div className={`badge-base ${isConnected ? "badge-success" : "badge-neutral"}`}><Radio className="h-3.5 w-3.5" />{isConnected ? "Ao vivo" : "Reconectando"}</div>}
+        description="Resumo operacional derivado das ordens, intervenções programadas e lembretes internos do painel."
+        actions={<div className="flex flex-wrap items-center gap-2"><button type="button" className="btn-base btn-secondary btn-md" onClick={() => { void markAllNotificationsRead().then(refresh); }}><CheckCheck className="h-4 w-4" />Marcar todas como lidas</button><div className={`badge-base ${isConnected ? "badge-success" : "badge-neutral"}`}><Radio className="h-3.5 w-3.5" />{isConnected ? "Ao vivo" : "Reconectando"}</div></div>}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <DeviceNotificationSettings compact />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <NotificationOverviewCard title="Alertas críticos" value={summary.counts.late} description="Ordens com prazo vencido e necessidade de ação imediata." tone="danger" icon={<AlertTriangle className="h-5 w-5" />} />
         <NotificationOverviewCard title="Vencem hoje" value={summary.counts.dueToday} description="Itens que ainda podem virar atraso no decorrer do dia." tone="warning" icon={<CalendarClock className="h-5 w-5" />} />
         <NotificationOverviewCard title="Sem atualização" value={summary.counts.stale} description="Ordens sem movimentação recente e com risco de ficarem esquecidas." tone="info" icon={<Clock3 className="h-5 w-5" />} />
+        <NotificationOverviewCard title="Intervenções" value={summary.counts.interventions} description="Lembretes pendentes de intervenções programadas." tone="info" icon={<BellRing className="h-5 w-5" />} />
         <NotificationOverviewCard title="Movimentações" value={summary.counts.recentActivities} description={`Última checagem em ${summary.checkedAt}.`} tone="success" icon={<Activity className="h-5 w-5" />} />
       </div>
 
@@ -79,7 +91,7 @@ export function NotificationsLivePage({ initialSummary }: { initialSummary: Noti
 
         {summary.items.length === 0 ? (
           <div className="mt-4">
-            <EmptyState compact title="Nenhum alerta agora" description="Quando surgirem ordens críticas ou novas movimentações, elas aparecem aqui sem você precisar procurar manualmente." />
+            <EmptyState compact title="Nenhum alerta agora" description="Quando surgirem ordens críticas, intervenções próximas ou novas movimentações, elas aparecem aqui sem você precisar procurar manualmente." />
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">

@@ -7,3 +7,5 @@ export { getInternalUserById, getInternalUsers, getTechnicianById, getTechnician
 export { getNotificationSummary } from "@/lib/server-data/notifications";
 
 export { getAuditEvents, getServiceOrderAuditEvents } from "@/lib/server-data/audit";
+
+export { buildInterventionsQuery, getInterventionDetail, getInterventionsPageData, parseInterventionFilters } from "@/lib/server-data/interventions";

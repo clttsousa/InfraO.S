@@ -1,6 +1,6 @@
-import { unstable_cache } from "next/cache";
 import { query } from "@/lib/db";
 import { APP_TIME_ZONE, formatDateTime } from "@/lib/format";
+import { getSessionUser } from "@/lib/session";
 import type { NotificationItem, NotificationSummary } from "@/types";
 
 type CountRow = { total: string };
@@ -21,6 +21,15 @@ type ActivityRow = {
 
 type AlertIdRow = { notification_id: string };
 
+type AppNotificationRow = {
+  id: string;
+  title: string;
+  message: string;
+  type: "intervention_reminder" | "intervention_today" | "intervention_late";
+  related_event_id: string | null;
+  created_at: string;
+};
+
 const dueTodayCondition = `
   deadline_at is not null
   and status not in ('FINALIZADA', 'CANCELADA')
@@ -39,8 +48,29 @@ const staleCondition = `
   and status not in ('FINALIZADA', 'CANCELADA')
 `;
 
-async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
-  const [lateCountResult, dueTodayCountResult, staleCountResult, lateRows, dueTodayRows, staleRows, activityRows, lateIdsResult, dueTodayIdsResult, staleIdsResult] = await Promise.all([
+function formatNotificationDateKey(value: string) {
+  const date = new Date(value);
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: APP_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return formatter.format(date).replace(/[- :]/g, '');
+}
+
+function mapAppNotificationLevel(type: AppNotificationRow["type"]): NotificationItem["level"] {
+  if (type === "intervention_late") return "danger";
+  if (type === "intervention_today") return "warning";
+  return "info";
+}
+
+export async function getNotificationSummary(): Promise<NotificationSummary> {
+  const session = await getSessionUser();
+  const [lateCountResult, dueTodayCountResult, staleCountResult, lateRows, dueTodayRows, staleRows, activityRows, lateIdsResult, dueTodayIdsResult, staleIdsResult, appNotificationsResult] = await Promise.all([
     query<CountRow>(`select count(*)::text as total from service_orders where ${lateCondition}`),
     query<CountRow>(`select count(*)::text as total from service_orders where ${dueTodayCondition}`),
     query<CountRow>(`select count(*)::text as total from service_orders where ${staleCondition}`),
@@ -86,14 +116,34 @@ async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
       select concat('stale-', id::text, '-', to_char(updated_at at time zone '${APP_TIME_ZONE}', 'YYYYMMDDHH24MI')) as notification_id
       from service_orders
       where ${staleCondition}
-    `)
+    `),
+    session
+      ? query<AppNotificationRow>(`
+          select id::text, title, message, type, related_event_id::text, created_at::text
+          from app_notifications
+          where user_id = $1::uuid and read_at is null
+          order by created_at desc
+          limit 8
+        `, [session.id])
+      : Promise.resolve({ rows: [] } as { rows: AppNotificationRow[] })
   ]);
 
   const lateCount = Number(lateCountResult.rows[0]?.total ?? 0);
   const dueTodayCount = Number(dueTodayCountResult.rows[0]?.total ?? 0);
   const staleCount = Number(staleCountResult.rows[0]?.total ?? 0);
+  const interventionCount = appNotificationsResult.rows.length;
 
-  const items: NotificationItem[] = [
+  const interventionItems: NotificationItem[] = appNotificationsResult.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.message,
+    href: row.related_event_id ? `/intervencoes?selected=${row.related_event_id}` : "/intervencoes",
+    level: mapAppNotificationLevel(row.type),
+    when: formatDateTime(row.created_at),
+    category: "intervention" as const
+  }));
+
+  const orderItems: NotificationItem[] = [
     ...lateRows.rows.map((row) => ({
       id: `late-${row.id}-${row.deadline_at ? formatNotificationDateKey(row.deadline_at) : 'sem-prazo'}`,
       title: `O.S. ${row.order_number} atrasada`,
@@ -130,45 +180,24 @@ async function getNotificationSummaryUncached(): Promise<NotificationSummary> {
       when: formatDateTime(row.created_at),
       category: 'activity' as const
     }))
-  ].slice(0, 10);
+  ];
 
   return {
-    total: lateCount + dueTodayCount + staleCount,
+    total: lateCount + dueTodayCount + staleCount + interventionCount,
     counts: {
       late: lateCount,
       dueToday: dueTodayCount,
       stale: staleCount,
-      recentActivities: activityRows.rows.length
+      recentActivities: activityRows.rows.length,
+      interventions: interventionCount
     },
-    items,
+    items: [...interventionItems, ...orderItems].slice(0, 14),
     activeAlertIds: {
       late: lateIdsResult.rows.map((row) => row.notification_id),
       dueToday: dueTodayIdsResult.rows.map((row) => row.notification_id),
-      stale: staleIdsResult.rows.map((row) => row.notification_id)
+      stale: staleIdsResult.rows.map((row) => row.notification_id),
+      intervention: appNotificationsResult.rows.map((row) => row.id)
     },
     checkedAt: formatDateTime(new Date().toISOString())
   };
-}
-
-function formatNotificationDateKey(value: string) {
-  const date = new Date(value);
-  const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: APP_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-  return formatter.format(date).replace(/[- :]/g, '');
-}
-
-const getNotificationSummaryCached = unstable_cache(getNotificationSummaryUncached, ['notification-summary-v5.1.1'], {
-  revalidate: 30,
-  tags: ['dashboard']
-});
-
-export async function getNotificationSummary(): Promise<NotificationSummary> {
-  return getNotificationSummaryCached();
 }

@@ -1,0 +1,356 @@
+import { INTERVENTION_SOURCE_OPTIONS, INTERVENTION_STATUS_OPTIONS, INTERVENTION_TYPE_OPTIONS } from "@/lib/constants";
+import { query } from "@/lib/db";
+import { formatDate, formatDateTime, APP_TIME_ZONE } from "@/lib/format";
+import { formatInterventionStatus, formatInterventionType } from "@/lib/interventions";
+import { isUuid } from "@/lib/validation";
+import type {
+  InterventionDetail,
+  InterventionFilters,
+  InterventionItem,
+  InterventionListResult,
+  InterventionPointItem,
+  InterventionQuickFilter,
+  InterventionSourceDb,
+  InterventionStatusDb,
+  InterventionSummary,
+  InterventionTypeDb
+} from "@/types";
+
+type InterventionRow = {
+  id: string;
+  title: string;
+  type: InterventionTypeDb;
+  location_name: string;
+  start_at: string;
+  end_at: string;
+  status: InterventionStatusDb;
+  source: InterventionSourceDb;
+  original_message: string | null;
+  notes: string | null;
+  responsible_user_id: string | null;
+  responsible_name: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+  points_count: string | number;
+  is_late: boolean;
+};
+
+type InterventionPointRow = {
+  id: string;
+  label: string;
+  maps_url: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const typeValues = new Set<string>(INTERVENTION_TYPE_OPTIONS.map((item) => item.value));
+const statusValues = new Set<string>(INTERVENTION_STATUS_OPTIONS.map((item) => item.value));
+const sourceValues = new Set<string>(INTERVENTION_SOURCE_OPTIONS.map((item) => item.value));
+
+function normalizeQuickFilter(value?: string): InterventionQuickFilter {
+  if (["today", "tomorrow", "week", "late", "concluded", "canceled"].includes(value ?? "")) {
+    return value as InterventionQuickFilter;
+  }
+  return "all";
+}
+
+function getOptionLabel(options: readonly { value: string; label: string }[], value: string) {
+  return options.find((item) => item.value === value)?.label ?? value;
+}
+
+function toTimeLabel(startAt: string, endAt: string) {
+  const start = new Date(startAt);
+  const end = new Date(endAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
+  const formatter = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  return `${formatter.format(start)} às ${formatter.format(end)}`;
+}
+
+function toDateInput(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+function toTimeInput(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date);
+}
+
+function buildInterventionFilters(filters: InterventionFilters) {
+  const clauses = ["ie.archived_at is null"];
+  const params: unknown[] = [];
+
+  const addParam = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+
+  const quick = normalizeQuickFilter(filters.quick);
+
+  if (filters.q) {
+    const param = addParam(`%${filters.q.trim()}%`);
+    clauses.push(`(ie.title ilike ${param} or ie.location_name ilike ${param} or ie.original_message ilike ${param} or ie.notes ilike ${param})`);
+  }
+
+  if (filters.type && typeValues.has(filters.type)) {
+    clauses.push(`ie.type = ${addParam(filters.type)}`);
+  }
+
+  if (filters.location) {
+    clauses.push(`ie.location_name ilike ${addParam(`%${filters.location.trim()}%`)}`);
+  }
+
+  if (filters.status && statusValues.has(filters.status)) {
+    clauses.push(`ie.status = ${addParam(filters.status)}`);
+  }
+
+  if (filters.source && sourceValues.has(filters.source)) {
+    clauses.push(`ie.source = ${addParam(filters.source)}`);
+  }
+
+  if (filters.responsibleId && isUuid(filters.responsibleId)) {
+    clauses.push(`ie.responsible_user_id = ${addParam(filters.responsibleId)}::uuid`);
+  }
+
+  if (filters.from) {
+    clauses.push(`ie.start_at >= (${addParam(filters.from)}::date at time zone '${APP_TIME_ZONE}')`);
+  }
+
+  if (filters.to) {
+    clauses.push(`ie.start_at < ((${addParam(filters.to)}::date + interval '1 day') at time zone '${APP_TIME_ZONE}')`);
+  }
+
+  if (quick === "today") {
+    clauses.push(`(ie.start_at at time zone '${APP_TIME_ZONE}')::date = (now() at time zone '${APP_TIME_ZONE}')::date`);
+  }
+
+  if (quick === "tomorrow") {
+    clauses.push(`(ie.start_at at time zone '${APP_TIME_ZONE}')::date = ((now() at time zone '${APP_TIME_ZONE}')::date + interval '1 day')::date`);
+  }
+
+  if (quick === "week") {
+    clauses.push(`ie.start_at >= ((now() at time zone '${APP_TIME_ZONE}')::date at time zone '${APP_TIME_ZONE}')`);
+    clauses.push(`ie.start_at < (((now() at time zone '${APP_TIME_ZONE}')::date + interval '7 day') at time zone '${APP_TIME_ZONE}')`);
+  }
+
+  if (quick === "late") {
+    clauses.push(`ie.status not in ('CONCLUIDO', 'CANCELADO') and (ie.status = 'ATRASADO' or ie.end_at < now())`);
+  }
+
+  if (quick === "concluded") {
+    clauses.push(`ie.status = 'CONCLUIDO'`);
+  }
+
+  if (quick === "canceled") {
+    clauses.push(`ie.status = 'CANCELADO'`);
+  }
+
+  return {
+    clause: clauses.length ? `where ${clauses.join(" and ")}` : "",
+    params
+  };
+}
+
+const baseInterventionSelect = `
+  select
+    ie.id::text,
+    ie.title,
+    ie.type,
+    ie.location_name,
+    ie.start_at,
+    ie.end_at,
+    ie.status,
+    ie.source,
+    ie.original_message,
+    ie.notes,
+    ie.responsible_user_id::text,
+    responsible.full_name as responsible_name,
+    creator.full_name as created_by_name,
+    ie.created_at,
+    ie.updated_at,
+    coalesce(point_counts.points_count, 0)::text as points_count,
+    (ie.status = 'ATRASADO' or (ie.status not in ('CONCLUIDO', 'CANCELADO') and ie.end_at < now())) as is_late
+  from infra_events ie
+  left join internal_users creator on creator.id = ie.created_by
+  left join internal_users responsible on responsible.id = ie.responsible_user_id
+  left join lateral (
+    select count(*) as points_count
+    from infra_event_points iep
+    where iep.event_id = ie.id
+  ) point_counts on true
+`;
+
+export function parseInterventionFilters(params: Record<string, string | string[] | undefined>): InterventionFilters {
+  const get = (key: string) => {
+    const value = params[key];
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  };
+
+  return {
+    q: get("q"),
+    quick: normalizeQuickFilter(get("quick")),
+    type: get("type"),
+    location: get("location"),
+    status: get("status"),
+    source: get("source"),
+    responsibleId: get("responsible"),
+    from: get("from"),
+    to: get("to")
+  };
+}
+
+export function buildInterventionsQuery(filters: InterventionFilters) {
+  const params = new URLSearchParams();
+  if (filters.quick && filters.quick !== "all") params.set("quick", filters.quick);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.type) params.set("type", filters.type);
+  if (filters.location) params.set("location", filters.location);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.source) params.set("source", filters.source);
+  if (filters.responsibleId) params.set("responsible", filters.responsibleId);
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return params;
+}
+
+function mapInterventionRow(row: InterventionRow): InterventionItem {
+  const isLate = Boolean(row.is_late);
+  return {
+    id: row.id,
+    title: row.title,
+    type: formatInterventionType(row.type),
+    rawType: row.type,
+    locationName: row.location_name || "Não informado",
+    status: formatInterventionStatus(row.status, isLate),
+    rawStatus: row.status,
+    source: getOptionLabel(INTERVENTION_SOURCE_OPTIONS, row.source),
+    rawSource: row.source,
+    startAt: formatDateTime(row.start_at),
+    endAt: formatDateTime(row.end_at),
+    startAtIso: row.start_at,
+    endAtIso: row.end_at,
+    dateLabel: formatDate(row.start_at),
+    timeLabel: toTimeLabel(row.start_at, row.end_at),
+    pointsCount: Number(row.points_count ?? 0),
+    createdByName: row.created_by_name ?? "Sistema",
+    responsibleId: row.responsible_user_id,
+    responsibleName: row.responsible_name ?? "Sem responsável definido",
+    notes: row.notes,
+    isLate,
+    createdAt: formatDateTime(row.created_at),
+    updatedAt: formatDateTime(row.updated_at)
+  };
+}
+
+function mapPointRow(row: InterventionPointRow): InterventionPointItem {
+  return {
+    id: row.id,
+    label: row.label,
+    mapsUrl: row.maps_url,
+    createdAt: formatDateTime(row.created_at),
+    updatedAt: row.updated_at ? formatDateTime(row.updated_at) : null
+  };
+}
+
+export async function getInterventionsPageData(filters: InterventionFilters): Promise<InterventionListResult> {
+  const built = buildInterventionFilters(filters);
+
+  const [summaryResult, listResult] = await Promise.all([
+    query<{
+      today: string;
+      tomorrow: string;
+      week: string;
+      late: string;
+      concluded: string;
+    }>(
+      `
+        select
+          count(*) filter (where (start_at at time zone '${APP_TIME_ZONE}')::date = (now() at time zone '${APP_TIME_ZONE}')::date)::text as today,
+          count(*) filter (where (start_at at time zone '${APP_TIME_ZONE}')::date = ((now() at time zone '${APP_TIME_ZONE}')::date + interval '1 day')::date)::text as tomorrow,
+          count(*) filter (where start_at >= ((now() at time zone '${APP_TIME_ZONE}')::date at time zone '${APP_TIME_ZONE}') and start_at < (((now() at time zone '${APP_TIME_ZONE}')::date + interval '7 day') at time zone '${APP_TIME_ZONE}'))::text as week,
+          count(*) filter (where status not in ('CONCLUIDO', 'CANCELADO') and (status = 'ATRASADO' or end_at < now()))::text as late,
+          count(*) filter (where status = 'CONCLUIDO')::text as concluded
+        from infra_events
+        where archived_at is null
+      `
+    ),
+    query<InterventionRow>(
+      `
+        ${baseInterventionSelect}
+        ${built.clause}
+        order by
+          case when ie.status not in ('CONCLUIDO', 'CANCELADO') then 0 else 1 end,
+          ie.start_at asc,
+          ie.updated_at desc
+        limit 200
+      `,
+      built.params
+    )
+  ]);
+
+  const summaryRow = summaryResult.rows[0];
+  const summary: InterventionSummary = {
+    today: Number(summaryRow?.today ?? 0),
+    tomorrow: Number(summaryRow?.tomorrow ?? 0),
+    week: Number(summaryRow?.week ?? 0),
+    late: Number(summaryRow?.late ?? 0),
+    concluded: Number(summaryRow?.concluded ?? 0)
+  };
+
+  return {
+    items: listResult.rows.map(mapInterventionRow),
+    summary
+  };
+}
+
+export async function getInterventionDetail(id: string): Promise<InterventionDetail | null> {
+  if (!isUuid(id)) return null;
+
+  const result = await query<InterventionRow>(
+    `
+      ${baseInterventionSelect}
+      where ie.id = $1::uuid and ie.archived_at is null
+      limit 1
+    `,
+    [id]
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  const pointsResult = await query<InterventionPointRow>(
+    `
+      select id::text, label, maps_url, created_at, updated_at
+      from infra_event_points
+      where event_id = $1::uuid
+      order by created_at asc, label asc
+    `,
+    [id]
+  );
+
+  return {
+    ...mapInterventionRow(row),
+    originalMessage: row.original_message,
+    dateInput: toDateInput(row.start_at),
+    startTimeInput: toTimeInput(row.start_at),
+    endTimeInput: toTimeInput(row.end_at),
+    points: pointsResult.rows.map(mapPointRow)
+  };
+}

@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { RealtimeProvider } from "@/components/realtime/realtime-provider";
+import { PwaBootstrap } from "@/components/pwa/pwa-bootstrap";
 import { SessionPresenceHeartbeat } from "@/components/shared/session-presence-heartbeat";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
@@ -16,6 +17,7 @@ export function AppShell({ children, user, notifications }: { children: ReactNod
   return (
     <RealtimeProvider>
       <div className="app-shell-bg min-h-screen">
+        <PwaBootstrap />
         <SessionPresenceHeartbeat />
         <div className="mx-auto flex min-h-screen max-w-[1800px]">
           <Sidebar user={user} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />

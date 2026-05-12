@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Activity, ImageIcon, LayoutTemplate, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader, Surface } from "@/components/shared/ui";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { DeviceNotificationSettings } from "@/components/pwa/device-notification-settings";
 import { AdminPreferencesPanel } from "@/components/settings/admin-preferences-panel";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { requireAdmin } from "@/lib/session";
@@ -20,6 +21,9 @@ export default async function SettingsPage() {
             <PageHeader title="Configurações" description="Ajustes administrativos, preferências de operação e validações de ambiente." actions={<Link href="/profile" className="btn-base btn-secondary btn-md">Meu acesso</Link>} />
           </Surface>
           <AdminPreferencesPanel />
+          <Surface className="p-5">
+            <DeviceNotificationSettings />
+          </Surface>
         </div>
         <div className="space-y-6">
           <Surface className="p-5">

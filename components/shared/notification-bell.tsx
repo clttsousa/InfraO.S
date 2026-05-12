@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNotifications } from "@/components/providers/notification-provider";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Bell, CheckCircle2, Clock3, TriangleAlert, Activity } from "lucide-react";
 import { cn } from "@/components/shared/utils";
@@ -38,6 +39,22 @@ function persistAcknowledgedIds(ids: string[]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(-250)));
 }
 
+async function markNotificationRead(id: string) {
+  await fetch('/api/notifications/mark-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+}
+
+async function markAllNotificationsRead() {
+  await fetch('/api/notifications/mark-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ all: true })
+  });
+}
+
 async function fetchNotificationSummary() {
   const response = await fetch('/api/notifications/summary', { cache: 'no-store' });
   if (!response.ok) {
@@ -47,6 +64,7 @@ async function fetchNotificationSummary() {
 }
 
 export function NotificationBell({ summary }: { summary: NotificationSummary }) {
+  const { info } = useNotifications();
   const { isConnected, subscribe } = useRealtime();
   const [open, setOpen] = useState(false);
   const [summaryState, setSummaryState] = useState(summary);
@@ -91,12 +109,15 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
   useEffect(() => {
     return subscribe((event) => {
       if (!["order.created", "order.updated", "order.status_changed", "order.deadline_changed", "order.assigned_changed", "notification.created"].includes(event.type)) return;
+      if (event.type === "notification.created" && typeof event.payload?.title === "string") {
+        info(event.payload.title, { title: "Novo lembrete", duration: 5200 });
+      }
       if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = window.setTimeout(() => {
         void refreshSummary();
       }, 160);
     });
-  }, [refreshSummary, subscribe]);
+  }, [info, refreshSummary, subscribe]);
 
   const acknowledgedSet = useMemo(() => new Set(acknowledgedIds), [acknowledgedIds]);
 
@@ -104,7 +125,8 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
     () => [
       ...summaryState.activeAlertIds.late,
       ...summaryState.activeAlertIds.dueToday,
-      ...summaryState.activeAlertIds.stale
+      ...summaryState.activeAlertIds.stale,
+      ...summaryState.activeAlertIds.intervention
     ],
     [summaryState]
   );
@@ -130,13 +152,15 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
     const late = summaryState.activeAlertIds.late.filter((id) => !acknowledgedSet.has(id)).length;
     const dueToday = summaryState.activeAlertIds.dueToday.filter((id) => !acknowledgedSet.has(id)).length;
     const stale = summaryState.activeAlertIds.stale.filter((id) => !acknowledgedSet.has(id)).length;
+    const interventions = summaryState.activeAlertIds.intervention.filter((id) => !acknowledgedSet.has(id)).length;
 
     return {
-      total: late + dueToday + stale,
+      total: late + dueToday + stale + interventions,
       counts: {
         late,
         dueToday,
         stale,
+        interventions,
         recentActivities: summaryState.counts.recentActivities
       },
       items: summaryState.items.filter((item) => item.category === 'activity' || !acknowledgedSet.has(item.id))
@@ -152,6 +176,9 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
 
   function acknowledge(item: NotificationItem) {
     if (item.category === 'activity') return;
+    if (item.category === 'intervention') {
+      void markNotificationRead(item.id).then(refreshSummary).catch(() => undefined);
+    }
     setAcknowledgedIds((current) => {
       if (current.includes(item.id)) return current;
       const next = [...current, item.id].slice(-250);
@@ -184,14 +211,30 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
                 <p className="app-title text-base font-semibold">Central de notificações</p>
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">{headline}</p>
               </div>
-              <Link href="/notifications" className="app-link text-sm font-medium" onClick={() => setOpen(false)}>
-                Abrir painel
-              </Link>
+              <div className="flex flex-col items-end gap-1">
+                <Link href="/notifications" className="app-link text-sm font-medium" onClick={() => setOpen(false)}>
+                  Abrir painel
+                </Link>
+                {visibleSummary.total > 0 ? (
+                  <button
+                    type="button"
+                    className="app-link text-xs font-medium"
+                    onClick={() => {
+                      setAcknowledgedIds(activeAlertIds);
+                      persistAcknowledgedIds(activeAlertIds);
+                      void markAllNotificationsRead().then(refreshSummary).catch(() => undefined);
+                    }}
+                  >
+                    Marcar todas como lidas
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--text-secondary)]">
               <span className="badge-base badge-danger">{visibleSummary.counts.late} atrasadas</span>
               <span className="badge-base badge-warning">{visibleSummary.counts.dueToday} vencem hoje</span>
               <span className="badge-base badge-primary">{visibleSummary.counts.stale} sem atualização</span>
+              <span className="badge-base badge-success">{visibleSummary.counts.interventions} intervenções</span>
             </div>
           </div>
 

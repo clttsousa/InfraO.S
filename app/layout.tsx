@@ -9,7 +9,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "InfraOS",
-  description: "Controle interno de O.S. de infra"
+  description: "Controle interno de O.S. de infra",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0f172a",
+  appleWebApp: {
+    capable: true,
+    title: "InfraOS",
+    statusBarStyle: "black-translucent"
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
