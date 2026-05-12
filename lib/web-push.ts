@@ -1,4 +1,4 @@
-import { createCipheriv, createECDH, createPrivateKey, createSign, hkdfSync, randomBytes } from "node:crypto";
+import { createCipheriv, createECDH, createHmac, createPrivateKey, createSign, randomBytes } from "node:crypto";
 
 export type PushSubscriptionRecord = {
   endpoint: string;
@@ -31,12 +31,6 @@ function base64UrlDecode(value: string) {
   return Buffer.from(normalized + padding, "base64");
 }
 
-function uint16Buffer(value: number) {
-  const buffer = Buffer.alloc(2);
-  buffer.writeUInt16BE(value, 0);
-  return buffer;
-}
-
 function getAudience(endpoint: string) {
   const url = new URL(endpoint);
   return `${url.protocol}//${url.host}`;
@@ -46,9 +40,11 @@ function derToJose(signature: Buffer) {
   // ECDSA DER -> JOSE r || s para ES256.
   let offset = 0;
   if (signature[offset++] !== 0x30) throw new Error("Assinatura VAPID inválida.");
-  const sequenceLength = signature[offset++];
-  if (sequenceLength + 2 !== signature.length && sequenceLength !== 0x81) throw new Error("Assinatura VAPID inválida.");
-  if (sequenceLength === 0x81) offset += 1;
+  let sequenceLength = signature[offset++];
+  if (sequenceLength === 0x81) {
+    sequenceLength = signature[offset++];
+  }
+  if (sequenceLength + offset !== signature.length) throw new Error("Assinatura VAPID inválida.");
   if (signature[offset++] !== 0x02) throw new Error("Assinatura VAPID inválida.");
   const rLength = signature[offset++];
   let r = signature.subarray(offset, offset + rLength);
@@ -96,32 +92,51 @@ function createVapidJwt(endpoint: string, config: WebPushConfig) {
   return `${signingInput}.${base64UrlEncode(signature)}`;
 }
 
-function hkdf(ikm: Buffer, salt: Buffer, info: Buffer | string, length: number) {
-  return Buffer.from(hkdfSync("sha256", ikm, salt, typeof info === "string" ? Buffer.from(info) : info, length));
+function hmacSha256(key: Buffer, input: Buffer | string): Buffer {
+  return Buffer.from(createHmac("sha256", key).update(input).digest());
+}
+
+function hkdfExpand(prk: Buffer, info: Buffer | string, length: number) {
+  const infoBuffer = typeof info === "string" ? Buffer.from(info, "utf8") : info;
+  const blocks: Buffer[] = [];
+  let previous: Buffer = Buffer.from([]);
+  let counter = 1;
+
+  while (Buffer.concat(blocks).length < length) {
+    previous = hmacSha256(prk, Buffer.concat([previous, Buffer.from(infoBuffer), Buffer.from([counter])]));
+    blocks.push(previous);
+    counter += 1;
+  }
+
+  return Buffer.concat(blocks).subarray(0, length);
 }
 
 function encryptPayload(subscription: PushSubscriptionRecord, payload: WebPushPayload) {
   const userPublicKey = base64UrlDecode(subscription.p256dh);
   const authSecret = base64UrlDecode(subscription.auth);
+
+  if (userPublicKey.length !== 65 || userPublicKey[0] !== 0x04) {
+    throw new Error("Push subscription inválida: p256dh não é uma chave P-256 válida.");
+  }
+  if (authSecret.length < 16) {
+    throw new Error("Push subscription inválida: auth secret curto demais.");
+  }
+
   const salt = randomBytes(16);
   const serverKeys = createECDH("prime256v1");
   serverKeys.generateKeys();
   const serverPublicKey = serverKeys.getPublicKey(undefined, "uncompressed");
   const sharedSecret = serverKeys.computeSecret(userPublicKey);
 
-  const authInfo = Buffer.from("Content-Encoding: auth\0", "utf8");
-  const pseudoRandomKey = hkdf(sharedSecret, authSecret, authInfo, 32);
-  const context = Buffer.concat([
-    Buffer.from("P-256\0", "utf8"),
-    uint16Buffer(userPublicKey.length),
-    userPublicKey,
-    uint16Buffer(serverPublicKey.length),
-    serverPublicKey
-  ]);
-  const cekInfo = Buffer.concat([Buffer.from("Content-Encoding: aes128gcm\0", "utf8"), context]);
-  const nonceInfo = Buffer.concat([Buffer.from("Content-Encoding: nonce\0", "utf8"), context]);
-  const contentEncryptionKey = hkdf(pseudoRandomKey, salt, cekInfo, 16);
-  const nonce = hkdf(pseudoRandomKey, salt, nonceInfo, 12);
+  // RFC 8291 / aes128gcm: a implementação anterior usava o fluxo legado do aesgcm,
+  // que podia retornar HTTP 201/202 no push service, mas o navegador não conseguia
+  // descriptografar o payload e a notificação não aparecia no Windows/celular.
+  const prkKey = hmacSha256(authSecret, sharedSecret);
+  const keyInfo = Buffer.concat([Buffer.from("WebPush: info\0", "utf8"), userPublicKey, serverPublicKey]);
+  const ikm = hkdfExpand(prkKey, keyInfo, 32);
+  const prk = hmacSha256(salt, ikm);
+  const contentEncryptionKey = hkdfExpand(prk, "Content-Encoding: aes128gcm\0", 16);
+  const nonce = hkdfExpand(prk, "Content-Encoding: nonce\0", 12);
   const plaintext = Buffer.concat([Buffer.from(JSON.stringify(payload), "utf8"), Buffer.from([0x02])]);
 
   const aes = createCipheriv("aes-128-gcm", contentEncryptionKey, nonce);
@@ -167,5 +182,5 @@ export async function sendWebPush(subscription: PushSubscriptionRecord, payload:
     return { ok: false as const, skipped: false as const, status: response.status, message: message || response.statusText };
   }
 
-  return { ok: true as const, skipped: false as const, status: response.status, message: "Push enviado." };
+  return { ok: true as const, skipped: false as const, status: response.status, message: `Push aceito pelo serviço (${response.status}).` };
 }

@@ -23,6 +23,28 @@ type NotificationPushRow = {
   related_event_id: string | null;
 };
 
+type DeliveryLogRow = {
+  channel: string;
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+};
+
+export type PushDeliveryDetail = {
+  subscriptionId?: string;
+  status: "sent" | "failed" | "skipped";
+  message: string;
+  httpStatus?: number;
+};
+
+export type PushDeliveryResult = {
+  sent: number;
+  failed: number;
+  skipped: number;
+  details: PushDeliveryDetail[];
+};
+
 export function isValidPushSubscriptionPayload(payload: PushSubscriptionPayload): payload is Required<PushSubscriptionPayload> & { keys: { p256dh: string; auth: string } } {
   return Boolean(
     payload &&
@@ -49,12 +71,24 @@ export async function getPushSubscriptionStatus(userId: string) {
     [userId]
   );
 
+  const lastLogResult = await query<DeliveryLogRow>(
+    `
+      select channel, status, error_message, sent_at::text, created_at::text
+      from notification_delivery_logs
+      where user_id = $1::uuid and channel = 'pwa'
+      order by created_at desc
+      limit 1
+    `,
+    [userId]
+  );
+
   const row = result.rows[0];
   return {
     configured: Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() && process.env.VAPID_PRIVATE_KEY?.trim()),
     total: Number(row?.total ?? 0),
     active: Number(row?.active ?? 0),
-    lastUsedAt: row?.last_used_at ?? null
+    lastUsedAt: row?.last_used_at ?? null,
+    lastDelivery: lastLogResult.rows[0] ?? null
   };
 }
 
@@ -127,10 +161,14 @@ async function insertDeliveryLog(params: {
   await query(sql, values);
 }
 
-export async function sendPushForNotifications(notificationIds: string[]) {
+function emptyDeliveryResult(): PushDeliveryResult {
+  return { sent: 0, failed: 0, skipped: 0, details: [] };
+}
+
+export async function sendPushForNotifications(notificationIds: string[]): Promise<PushDeliveryResult> {
   const uniqueIds = Array.from(new Set(notificationIds.filter(Boolean)));
   if (!uniqueIds.length) {
-    return { sent: 0, failed: 0, skipped: 0 };
+    return emptyDeliveryResult();
   }
 
   const notificationsResult = await query<NotificationPushRow>(
@@ -143,14 +181,14 @@ export async function sendPushForNotifications(notificationIds: string[]) {
     [uniqueIds]
   );
 
-  let sent = 0;
-  let failed = 0;
-  let skipped = 0;
+  const delivery = emptyDeliveryResult();
 
   for (const notification of notificationsResult.rows) {
     if (!notification.user_id) {
-      skipped += 1;
-      await insertDeliveryLog({ notificationId: notification.id, userId: null, status: "skipped", errorMessage: "Notificação sem usuário vinculado." });
+      delivery.skipped += 1;
+      const message = "Notificação sem usuário vinculado.";
+      delivery.details.push({ status: "skipped", message });
+      await insertDeliveryLog({ notificationId: notification.id, userId: null, status: "skipped", errorMessage: message });
       continue;
     }
 
@@ -165,8 +203,10 @@ export async function sendPushForNotifications(notificationIds: string[]) {
     );
 
     if (!subscriptions.rows.length) {
-      skipped += 1;
-      await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "skipped", errorMessage: "Usuário sem dispositivo PWA ativo." });
+      delivery.skipped += 1;
+      const message = "Usuário sem dispositivo PWA ativo.";
+      delivery.details.push({ status: "skipped", message });
+      await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "skipped", errorMessage: message });
       continue;
     }
 
@@ -180,27 +220,31 @@ export async function sendPushForNotifications(notificationIds: string[]) {
       }));
 
       if (result.ok) {
-        sent += 1;
+        delivery.sent += 1;
+        delivery.details.push({ subscriptionId: subscription.id, status: "sent", message: result.message, httpStatus: result.status });
         await query(`update push_subscriptions set last_used_at = now(), updated_at = now() where id = $1::uuid`, [subscription.id]);
         await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "sent", sentAt: true });
         continue;
       }
 
       if (result.skipped) {
-        skipped += 1;
+        delivery.skipped += 1;
+        delivery.details.push({ subscriptionId: subscription.id, status: "skipped", message: result.message, httpStatus: result.status });
         await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "skipped", errorMessage: result.message });
         continue;
       }
 
-      failed += 1;
+      delivery.failed += 1;
+      const message = result.message.slice(0, 600);
+      delivery.details.push({ subscriptionId: subscription.id, status: "failed", message, httpStatus: result.status });
       if ([404, 410].includes(result.status)) {
         await query(`update push_subscriptions set enabled = false, updated_at = now() where id = $1::uuid`, [subscription.id]);
       }
-      await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "failed", errorMessage: result.message.slice(0, 600) });
+      await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "failed", errorMessage: message });
     }
   }
 
-  return { sent, failed, skipped };
+  return delivery;
 }
 
 export async function sendTestPushToUser(userId: string) {
@@ -213,6 +257,7 @@ export async function sendTestPushToUser(userId: string) {
     [userId, `pwa-test:${userId}:${Date.now()}`]
   );
   const notificationId = result.rows[0]?.id;
-  if (!notificationId) return { sent: 0, failed: 0, skipped: 1 };
-  return sendPushForNotifications([notificationId]);
+  if (!notificationId) return { notificationId: null, ...emptyDeliveryResult() };
+  const push = await sendPushForNotifications([notificationId]);
+  return { notificationId, ...push };
 }

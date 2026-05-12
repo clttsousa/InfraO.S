@@ -1,3 +1,16 @@
+# V6.9.1 — Hotfix Push PWA
+
+- Corrigida a criptografia `aes128gcm` da implementação local de Web Push para o fluxo RFC 8291, evitando o cenário em que o push service aceita a requisição, mas o navegador não consegue descriptografar/exibir a notificação.
+- A ativação de notificações agora verifica se a subscription do navegador foi criada com a chave VAPID pública atual; se a chave mudou, a subscription antiga é removida e uma nova é criada.
+- O service worker passa a ser atualizado no carregamento do painel e mantém foco exclusivo em Push Notification, sem cache offline agressivo.
+- A área **Notificações neste dispositivo** agora mostra permissão do navegador, quantidade de dispositivos ativos e último envio PWA registrado.
+- Adicionado botão **Testar local** para validar `ServiceWorkerRegistration.showNotification()` diretamente no dispositivo.
+- Renomeado/ajustado o teste servidor para **Enviar teste push**, exibindo enviadas, falhas e ignoradas.
+- O botão de teste não declara sucesso quando apenas a notificação interna foi criada; o retorno agora expõe detalhes reais do envio PWA.
+- Logs de entrega PWA foram enriquecidos no retorno da API, mantendo `notification_delivery_logs` como fonte de diagnóstico.
+- README atualizado com troubleshooting para Windows, Android, iPhone/iOS, permissões do navegador e SQL de diagnóstico.
+- Sem migration nova; a versão continua usando `database/17_pwa_push_notifications.sql`.
+
 # V6.9.0 — Notificação tipo app / PWA
 
 - Configurado o InfraOS como PWA com `public/manifest.webmanifest`, ícones básicos e metadata de instalação.

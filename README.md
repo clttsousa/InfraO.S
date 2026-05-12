@@ -1,4 +1,4 @@
-# InfraOS v6.9
+# InfraOS v6.9.1
 
 Painel interno para operação de ordens de serviço, com autenticação própria, trilha de auditoria, relatórios e fila operacional pensada para uso diário.
 
@@ -65,6 +65,70 @@ Principais recursos:
 - script `npm run generate:vapid` para gerar chaves VAPID compatíveis com a implementação local.
 
 Para ativar no banco, execute `database/17_pwa_push_notifications.sql` após a migration `database/16_reminders_notifications.sql`.
+
+
+## V6.9.1 — Hotfix Push PWA
+
+A versão V6.9.1 corrige e melhora o diagnóstico das notificações tipo app/PWA.
+
+Principais ajustes:
+- correção da criptografia `aes128gcm` do Web Push para o fluxo RFC 8291;
+- revalidação automática da inscrição quando a chave VAPID pública muda;
+- atualização do service worker ao carregar o painel;
+- botão **Testar local** para validar se o próprio navegador/Windows/celular consegue exibir notificação via `showNotification()`;
+- botão **Enviar teste push** para validar o fluxo servidor → push service → dispositivo;
+- UI agora mostra entregas, falhas e ignoradas, sem declarar sucesso apenas porque a notificação interna foi criada;
+- área de PWA exibe permissão do navegador, quantidade de dispositivos ativos e último envio PWA registrado;
+- logs continuam usando `notification_delivery_logs` com `channel = pwa`.
+
+Não há migration nova nesta versão. Mantenha aplicada a `database/17_pwa_push_notifications.sql` da V6.9.
+
+### Como testar a notificação tipo app
+
+1. Acesse o InfraOS por HTTPS em produção ou `localhost` em desenvolvimento.
+2. Entre em `/settings` ou `/notifications`.
+3. Na área **Notificações neste dispositivo**, clique em **Ativar notificações**.
+4. Clique primeiro em **Testar local**.
+   - Se aparecer fora da aba, o Windows/celular/navegador conseguem exibir notificações.
+   - Se não aparecer, o bloqueio está no sistema operacional, navegador, permissão do site ou modo Não incomodar.
+5. Clique depois em **Enviar teste push**.
+   - Esse teste valida o envio real do backend para o dispositivo.
+   - A UI deve mostrar `enviada(s)`, `falha(s)` e `ignorada(s)`.
+6. Confira o log no banco:
+
+```sql
+select
+  channel,
+  status,
+  error_message,
+  sent_at,
+  created_at
+from notification_delivery_logs
+where channel = 'pwa'
+order by created_at desc
+limit 20;
+```
+
+### Troubleshooting rápido
+
+Windows/Chrome/Edge:
+- confirme que o site está com permissão **Permitir notificações**;
+- confirme que o Windows não está em **Não incomodar/Assistente de foco**;
+- confira se as notificações do Chrome/Edge estão permitidas em `Configurações > Sistema > Notificações`;
+- rode **Testar local** antes do teste push.
+
+Android:
+- use Chrome/Edge atualizado;
+- confira permissões de notificação do navegador e do site;
+- teste com o site aberto via HTTPS.
+
+iPhone/iOS:
+- use Safari;
+- adicione o InfraOS à Tela de Início;
+- abra pelo ícone instalado;
+- ative notificações dentro do PWA instalado.
+
+Se o banco mostra `status = sent`, mas nada aparece no sistema, rode **Testar local**. Se o teste local também não aparecer, o problema está fora do backend.
 
 ## Requisitos
 - Node.js 20+

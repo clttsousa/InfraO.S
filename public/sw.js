@@ -1,7 +1,7 @@
-/* InfraOS V6.9 — Service Worker focado em Push Notification.
+/* InfraOS V6.9.1 — Service Worker focado em Push Notification.
    Não aplica cache agressivo para evitar telas desatualizadas. */
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -14,7 +14,11 @@ function safeParsePushData(event) {
   try {
     return event.data.json();
   } catch {
-    return { title: 'InfraOS', body: event.data.text() };
+    try {
+      return { title: 'InfraOS', body: event.data.text() };
+    } catch {
+      return {};
+    }
   }
 }
 
@@ -25,8 +29,10 @@ self.addEventListener('push', (event) => {
     body: payload.body || payload.message || 'Novo alerta operacional disponível.',
     icon: payload.icon || '/icons/icon-192.svg',
     badge: payload.badge || '/icons/badge.svg',
-    tag: payload.tag || payload.notificationId || 'infraos-alert',
+    tag: payload.tag || payload.notificationId || `infraos-alert-${Date.now()}`,
     renotify: true,
+    requireInteraction: Boolean(payload.requireInteraction),
+    timestamp: Date.now(),
     data: {
       url: payload.url || '/notifications',
       notificationId: payload.notificationId || null,
@@ -52,4 +58,10 @@ self.addEventListener('notificationclick', (event) => {
     }
     await self.clients.openWindow(targetUrl);
   })());
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  // A renovação completa depende de usuário autenticado; por isso o painel de
+  // configurações força uma nova inscrição quando a chave VAPID muda ou o endpoint expira.
+  event.waitUntil(Promise.resolve());
 });
