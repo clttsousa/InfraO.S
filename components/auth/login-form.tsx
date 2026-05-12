@@ -79,14 +79,14 @@ export function LoginForm() {
   }
 
   return (
-    <Surface className="login-modern-surface w-full max-w-[31rem] overflow-hidden p-5 shadow-[var(--shadow-md)] md:p-7">
+    <Surface className="login-clean-card w-full overflow-hidden p-5 shadow-[var(--shadow-md)] md:p-7">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="login-mobile-badge lg:hidden">Acesso interno</div>
+          <div className="login-mobile-badge">Acesso interno</div>
           <BrandLogo size="md" subtitle="Painel interno" />
-          <h2 className="app-title mt-5 text-[2rem] font-semibold tracking-[-0.04em]">Bem-vindo de volta</h2>
+          <h2 className="app-title mt-5 text-[1.85rem] font-semibold tracking-[-0.04em] md:text-[2.15rem]">Entrar no InfraOS</h2>
           <p className="app-text-secondary mt-2 max-w-md text-sm leading-6">
-            Entre com seu e-mail corporativo para continuar sua operação.
+            Acesse o painel operacional com sua conta autorizada.
           </p>
         </div>
         <ThemeToggle />
@@ -151,9 +151,8 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-tertiary)]">
-        <span>Use uma conta autorizada.</span>
-        <span className="hidden sm:inline">Solicite suporte ao administrador em caso de bloqueio.</span>
+      <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/45 px-3.5 py-3 text-xs leading-5 text-[var(--text-tertiary)]">
+        Problemas para acessar? Solicite liberação ou redefinição ao administrador do InfraOS.
       </div>
     </Surface>
   );

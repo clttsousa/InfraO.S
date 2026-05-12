@@ -1,14 +1,56 @@
-# InfraOS v6.9.1
+# InfraOS v6.12
 
 Painel interno para operação de ordens de serviço, com autenticação própria, trilha de auditoria, relatórios e fila operacional pensada para uso diário.
 
 ## O que entrou nesta versão
-- endurecimento técnico de produção com `proxy.ts`
-- endpoint de saúde em `/api/health`
-- refatoração da camada de dados em módulos menores
-- filtros ativos mais claros na tela de ordens
-- visões salvas por usuário para combinações recorrentes de filtros
-- dashboard com drill-down direto para a fila correspondente
+- correção da navegação mobile para não exibir sidebar e bottom nav ao mesmo tempo;
+- novo menu mobile em bottom sheet com usuários, técnicos, relatórios, auditoria, configurações, perfil, nova O.S. e logout;
+- topbar mobile mais limpa, sem botão de sidebar redundante;
+- login simplificado, centralizado e organizado no Windows e no mobile;
+- ajustes de espaçamento, safe area e hierarchy para Android/iPhone/PWA;
+- pacote sem migration nova.
+
+## V6.12 — Mobile Premium, Menu Único e Login Limpo
+
+A V6.12 corrige a experiência mobile observada em campo. A navegação lateral mobile foi removida do fluxo principal para evitar duas navegações simultâneas. A barra inferior passa a ser a navegação correta no celular e o item **Menu** abre uma folha inferior com as opções completas do usuário.
+
+Principais recursos:
+- bottom navigation permanece como navegação principal no mobile;
+- botão **Menu** abre um bottom sheet próprio com atalhos administrativos e opção de sair;
+- admins veem usuários, técnicos, auditoria e configurações no menu mobile;
+- operadores veem apenas itens permitidos pelo perfil;
+- logout disponível e claro no mobile;
+- topbar mobile sem hambúrguer/sidebar duplicada;
+- tela de login deixou de usar hero institucional e passou a ser somente formulário de acesso, simples e premium;
+- melhorias de padding e safe area para uso como PWA no celular.
+
+Não há migration nova nesta versão.
+
+Arquivo complementar: `MOBILE_UX_NEXT_STEPS.md` com recomendações para próximos refinamentos mobile.
+
+
+## V6.11 — Notificações Globais por Usuário e Dispositivo
+
+A V6.11 ajusta as notificações de intervenções para o uso real em equipe. Agora os lembretes processados pela rota `/api/cron/reminders` criam notificação interna para **todos os usuários ativos** e tentam enviar Push/PWA para **todos os dispositivos ativos** desses usuários.
+
+Principais recursos:
+- todos os usuários internos ativos recebem lembretes de intervenção na central do InfraOS;
+- se o mesmo usuário ativou PWA no Windows e no celular, os dois dispositivos recebem a tentativa de push;
+- usuários sem dispositivo PWA ativo continuam recebendo a notificação interna;
+- novo banner discreto após login/acesso ao painel orienta a ativar notificações no dispositivo atual;
+- o banner não abre o prompt automaticamente: a permissão do navegador só é solicitada após clique em **Ativar**;
+- o botão **Agora não** oculta o aviso por 7 dias neste navegador;
+- a área **Notificações neste dispositivo** mostra status do navegador, status do dispositivo atual, total de dispositivos ativos, último envio e lista de dispositivos do usuário;
+- cada usuário pode desativar apenas os próprios dispositivos;
+- logs PWA registram `subscription_id` para diagnosticar entrega por dispositivo.
+
+Migration necessária:
+
+```sql
+database/18_global_push_devices.sql
+```
+
+Execute essa migration após `database/17_pwa_push_notifications.sql`.
 
 
 ## V6.7 — Intervenções Programadas
@@ -130,6 +172,35 @@ iPhone/iOS:
 
 Se o banco mostra `status = sent`, mas nada aparece no sistema, rode **Testar local**. Se o teste local também não aparecer, o problema está fora do backend.
 
+
+### Teste de envio global por usuário/dispositivo
+
+1. Faça login com o Usuário A no Windows e clique em **Ativar notificações**.
+2. Faça login com o mesmo Usuário A no celular e ative também.
+3. Faça login com o Usuário B em outro dispositivo e ative.
+4. Crie uma intervenção ou force um lembrete pendente no banco.
+5. Rode a rota protegida `/api/cron/reminders`.
+6. Usuários ativos devem receber notificação interna.
+7. Usuários com mais de um dispositivo PWA ativo devem receber uma tentativa de push por dispositivo.
+
+SQL útil para conferir entrega por dispositivo:
+
+```sql
+select
+  dl.channel,
+  dl.status,
+  dl.user_id,
+  dl.subscription_id,
+  ps.user_agent,
+  dl.error_message,
+  dl.sent_at,
+  dl.created_at
+from notification_delivery_logs dl
+left join push_subscriptions ps on ps.id = dl.subscription_id
+order by dl.created_at desc
+limit 30;
+```
+
 ## Requisitos
 - Node.js 20+
 - PostgreSQL compatível com o schema da pasta `database/`
@@ -159,7 +230,8 @@ Para ambiente novo:
 7. aplique `database/15_interventions.sql`
 8. aplique `database/16_reminders_notifications.sql`
 9. aplique `database/17_pwa_push_notifications.sql`
-10. aplique o seed adequado ao seu cenário
+10. aplique `database/18_global_push_devices.sql`
+11. aplique o seed adequado ao seu cenário
 
 ## Como rodar
 ```bash

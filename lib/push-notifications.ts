@@ -31,8 +31,19 @@ type DeliveryLogRow = {
   created_at: string;
 };
 
+export type PushDeviceRow = {
+  id: string;
+  endpoint: string;
+  user_agent: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  last_used_at: string | null;
+};
+
 export type PushDeliveryDetail = {
   subscriptionId?: string;
+  userId?: string | null;
   status: "sent" | "failed" | "skipped";
   message: string;
   httpStatus?: number;
@@ -58,15 +69,31 @@ export function isValidPushSubscriptionPayload(payload: PushSubscriptionPayload)
   );
 }
 
-export async function getPushSubscriptionStatus(userId: string) {
-  const result = await query<{ total: string; active: string; last_used_at: string | null }>(
+function maskEndpoint(endpoint: string) {
+  try {
+    const url = new URL(endpoint);
+    const suffix = endpoint.slice(-16);
+    return `${url.host}…${suffix}`;
+  } catch {
+    return `endpoint…${endpoint.slice(-16)}`;
+  }
+}
+
+export async function getPushSubscriptionStatus(userId: string, currentEndpoint?: string | null) {
+  const devicesResult = await query<PushDeviceRow>(
     `
       select
-        count(*)::text as total,
-        count(*) filter (where enabled = true)::text as active,
-        max(last_used_at)::text as last_used_at
+        id::text,
+        endpoint,
+        user_agent,
+        enabled,
+        created_at::text,
+        updated_at::text,
+        last_used_at::text
       from push_subscriptions
       where user_id = $1::uuid
+      order by enabled desc, updated_at desc
+      limit 25
     `,
     [userId]
   );
@@ -82,13 +109,31 @@ export async function getPushSubscriptionStatus(userId: string) {
     [userId]
   );
 
-  const row = result.rows[0];
+  const devices = devicesResult.rows.map((device) => ({
+    id: device.id,
+    endpoint: maskEndpoint(device.endpoint),
+    userAgent: device.user_agent,
+    enabled: device.enabled,
+    createdAt: device.created_at,
+    updatedAt: device.updated_at,
+    lastUsedAt: device.last_used_at,
+    isCurrent: currentEndpoint ? device.endpoint === currentEndpoint : false
+  }));
+  const currentDevice = currentEndpoint ? devicesResult.rows.find((device) => device.endpoint === currentEndpoint) : null;
+
   return {
     configured: Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() && process.env.VAPID_PRIVATE_KEY?.trim()),
-    total: Number(row?.total ?? 0),
-    active: Number(row?.active ?? 0),
-    lastUsedAt: row?.last_used_at ?? null,
-    lastDelivery: lastLogResult.rows[0] ?? null
+    total: devicesResult.rows.length,
+    active: devicesResult.rows.filter((device) => device.enabled).length,
+    currentDeviceActive: Boolean(currentDevice?.enabled),
+    currentDeviceKnown: Boolean(currentDevice),
+    lastUsedAt: devicesResult.rows.reduce<string | null>((latest, device) => {
+      if (!device.last_used_at) return latest;
+      if (!latest || new Date(device.last_used_at) > new Date(latest)) return device.last_used_at;
+      return latest;
+    }, null),
+    lastDelivery: lastLogResult.rows[0] ?? null,
+    devices
   };
 }
 
@@ -117,7 +162,15 @@ export async function savePushSubscription(userId: string, payload: PushSubscrip
   return result.rows[0];
 }
 
-export async function disablePushSubscription(userId: string, endpoint?: string) {
+export async function disablePushSubscription(userId: string, endpoint?: string, subscriptionId?: string) {
+  if (subscriptionId) {
+    const result = await query(
+      `update push_subscriptions set enabled = false, updated_at = now() where user_id = $1::uuid and id = $2::uuid`,
+      [userId, subscriptionId]
+    );
+    return result.rowCount ?? 0;
+  }
+
   if (endpoint) {
     const result = await query(
       `update push_subscriptions set enabled = false, updated_at = now() where user_id = $1::uuid and endpoint = $2`,
@@ -145,15 +198,16 @@ async function insertDeliveryLog(params: {
   client?: PoolClient;
   notificationId: string;
   userId: string | null;
+  subscriptionId?: string | null;
   status: "sent" | "failed" | "skipped";
   errorMessage?: string | null;
   sentAt?: boolean;
 }) {
   const sql = `
-    insert into notification_delivery_logs (notification_id, user_id, channel, status, error_message, sent_at)
-    values ($1::uuid, $2::uuid, 'pwa', $3, $4, ${params.sentAt ? "now()" : "null"})
+    insert into notification_delivery_logs (notification_id, user_id, subscription_id, channel, status, error_message, sent_at)
+    values ($1::uuid, $2::uuid, $3::uuid, 'pwa', $4, $5, ${params.sentAt ? "now()" : "null"})
   `;
-  const values = [params.notificationId, params.userId, params.status, params.errorMessage ?? null];
+  const values = [params.notificationId, params.userId, params.subscriptionId ?? null, params.status, params.errorMessage ?? null];
   if (params.client) {
     await params.client.query(sql, values);
     return;
@@ -187,7 +241,7 @@ export async function sendPushForNotifications(notificationIds: string[]): Promi
     if (!notification.user_id) {
       delivery.skipped += 1;
       const message = "Notificação sem usuário vinculado.";
-      delivery.details.push({ status: "skipped", message });
+      delivery.details.push({ userId: null, status: "skipped", message });
       await insertDeliveryLog({ notificationId: notification.id, userId: null, status: "skipped", errorMessage: message });
       continue;
     }
@@ -205,7 +259,7 @@ export async function sendPushForNotifications(notificationIds: string[]): Promi
     if (!subscriptions.rows.length) {
       delivery.skipped += 1;
       const message = "Usuário sem dispositivo PWA ativo.";
-      delivery.details.push({ status: "skipped", message });
+      delivery.details.push({ userId: notification.user_id, status: "skipped", message });
       await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "skipped", errorMessage: message });
       continue;
     }
@@ -221,26 +275,26 @@ export async function sendPushForNotifications(notificationIds: string[]): Promi
 
       if (result.ok) {
         delivery.sent += 1;
-        delivery.details.push({ subscriptionId: subscription.id, status: "sent", message: result.message, httpStatus: result.status });
+        delivery.details.push({ userId: notification.user_id, subscriptionId: subscription.id, status: "sent", message: result.message, httpStatus: result.status });
         await query(`update push_subscriptions set last_used_at = now(), updated_at = now() where id = $1::uuid`, [subscription.id]);
-        await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "sent", sentAt: true });
+        await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, subscriptionId: subscription.id, status: "sent", sentAt: true });
         continue;
       }
 
       if (result.skipped) {
         delivery.skipped += 1;
-        delivery.details.push({ subscriptionId: subscription.id, status: "skipped", message: result.message, httpStatus: result.status });
-        await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "skipped", errorMessage: result.message });
+        delivery.details.push({ userId: notification.user_id, subscriptionId: subscription.id, status: "skipped", message: result.message, httpStatus: result.status });
+        await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, subscriptionId: subscription.id, status: "skipped", errorMessage: result.message });
         continue;
       }
 
       delivery.failed += 1;
       const message = result.message.slice(0, 600);
-      delivery.details.push({ subscriptionId: subscription.id, status: "failed", message, httpStatus: result.status });
+      delivery.details.push({ userId: notification.user_id, subscriptionId: subscription.id, status: "failed", message, httpStatus: result.status });
       if ([404, 410].includes(result.status)) {
         await query(`update push_subscriptions set enabled = false, updated_at = now() where id = $1::uuid`, [subscription.id]);
       }
-      await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, status: "failed", errorMessage: message });
+      await insertDeliveryLog({ notificationId: notification.id, userId: notification.user_id, subscriptionId: subscription.id, status: "failed", errorMessage: message });
     }
   }
 

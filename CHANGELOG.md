@@ -1,3 +1,26 @@
+## v6.12.0
+- correção da navegação mobile para remover a duplicidade entre sidebar lateral e bottom navigation
+- novo menu mobile em bottom sheet com opções completas, respeitando permissões do usuário
+- inclusão de logout visível no mobile
+- topbar mobile simplificada sem botão de menu lateral redundante
+- login redesenhado para ser apenas a tela de acesso, mais simples, premium e responsivo
+- ajustes de safe area, espaçamento e hierarquia para uso em Android, iPhone e PWA
+- pacote sem migration nova
+
+# V6.11.0 — Notificações Globais por Usuário e Dispositivo
+
+- A rotina `/api/cron/reminders` passa a criar notificações internas de intervenção para todos os usuários internos ativos, respeitando usuários inativos.
+- O envio PWA agora percorre todos os dispositivos ativos vinculados a cada usuário notificado. Se um usuário ativou no Windows e no celular, ambos recebem a tentativa de push.
+- Mantida a regra do navegador: cada dispositivo precisa ser autorizado pelo próprio usuário uma vez.
+- Adicionado banner discreto após login/acesso ao painel para orientar a ativação de notificações no dispositivo atual.
+- O banner não solicita permissão automaticamente; o prompt do navegador só abre após clique em **Ativar**.
+- O botão **Agora não** oculta o aviso por 7 dias no navegador via `localStorage`.
+- A área **Notificações neste dispositivo** diferencia dispositivo atual ativo/inativo, permissão do navegador, total de dispositivos ativos, último envio PWA e lista de dispositivos.
+- Usuários podem desativar seus próprios dispositivos individualmente, sem afetar outros usuários.
+- Adicionada migration `database/18_global_push_devices.sql` para registrar `subscription_id` nos logs de entrega PWA.
+- Logs de entrega PWA ficam mais claros para diagnóstico por usuário/dispositivo.
+- README atualizado com fluxo de teste global, diagnóstico SQL e explicação de ativação por dispositivo.
+
 # V6.10.0 — Mobile First e Login Premium
 
 - Adicionada navegação inferior fixa no mobile com atalhos para Início, Ordens, Intervenções, Alertas e Menu.

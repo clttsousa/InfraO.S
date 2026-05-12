@@ -122,15 +122,10 @@ export async function syncInterventionReminders(client: PoolClient, eventId: str
   );
 }
 
-async function getRecipients(client: PoolClient, responsibleUserId: string | null) {
-  if (responsibleUserId) {
-    const result = await client.query<NotificationRecipientRow>(
-      `select id::text from internal_users where id = $1::uuid and is_active = true`,
-      [responsibleUserId]
-    );
-    return result.rows;
-  }
-
+async function getRecipients(client: PoolClient, _responsibleUserId: string | null) {
+  // V6.11: lembretes de intervenção são operacionais e globais.
+  // Todos os usuários internos ativos recebem a notificação interna; o push PWA
+  // é enviado depois para todos os dispositivos ativos de cada usuário.
   const result = await client.query<NotificationRecipientRow>(
     `select id::text from internal_users where is_active = true order by role asc, full_name asc`
   );

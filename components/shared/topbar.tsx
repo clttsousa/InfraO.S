@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarClock, Menu, Plus, Search, Shield, LayoutDashboard, FileText, Users, Settings } from "lucide-react";
+import { Bell, CalendarClock, Plus, Search, Shield, LayoutDashboard, FileText, Users, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SessionUser } from "@/lib/auth";
@@ -25,7 +25,7 @@ const titleByPathname: Record<string, string> = {
   "/profile": "Meu acesso"
 };
 
-export function Topbar({ pathname, user, notifications, onMenuClick }: { pathname: string; user: SessionUser; notifications: NotificationSummary; onMenuClick?: () => void }) {
+export function Topbar({ pathname, user, notifications }: { pathname: string; user: SessionUser; notifications: NotificationSummary }) {
   const { isOpen, setIsOpen } = useCommandPalette();
   const { preferences } = useSystemPreferences();
   const router = useRouter();
@@ -46,15 +46,12 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
       <header className="topbar-surface sticky top-0 z-20 border-b border-[var(--border)] px-3 py-3 backdrop-blur md:px-6 md:py-4">
         <div className="topbar-inner flex items-center justify-between gap-3">
           <div className="topbar-title-group flex min-w-0 items-center gap-2 md:gap-3">
-            <button onClick={onMenuClick} className="btn-base btn-secondary btn-md h-10 w-10 rounded-[var(--radius-control)] p-0 lg:hidden" aria-label="Abrir navegação lateral">
-              <Menu className="h-5 w-5" />
-            </button>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="app-title app-topbar-title truncate text-[1.28rem] font-semibold leading-tight md:text-[2.15rem]">{titleByPathname[pathname] ?? "InfraOS"}</h1>
                 {user.role === "ADMIN" ? <span className="badge-base badge-primary hidden sm:inline-flex"><Shield className="h-3.5 w-3.5" />Admin</span> : null}
               </div>
-              <p className="topbar-context mt-1 hidden truncate text-sm text-[var(--text-tertiary)] md:block">
+              <p className="topbar-context mt-1 hidden truncate text-sm text-[var(--text-tertiary)] lg:block">
                 Bem-vindo, <span className="font-semibold text-[var(--text-secondary)]">{user.name}</span> · Ambiente operacional em tempo real
               </p>
             </div>
