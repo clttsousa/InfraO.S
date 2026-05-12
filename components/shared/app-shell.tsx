@@ -16,15 +16,15 @@ export function AppShell({ children, user, notifications }: { children: ReactNod
   const pathname = usePathname();
   return (
     <RealtimeProvider>
-      <div className="app-shell-bg min-h-screen">
+      <div className="app-shell app-shell-bg min-h-screen w-full overflow-x-hidden">
         <PwaBootstrap />
         <SessionPresenceHeartbeat />
-        <div className="mx-auto flex min-h-screen max-w-[1800px]">
+        <div className="app-shell-layout flex min-h-screen w-full min-w-0">
           <Sidebar user={user} />
-          <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <div className="app-shell-main flex min-h-screen min-w-0 flex-1 flex-col">
             <Topbar pathname={pathname} user={user} notifications={notifications} />
             <PwaActivationPrompt />
-            <main className="app-main-content flex-1 pb-[calc(4.85rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
+            <main className="app-main-content flex min-w-0 flex-1 flex-col pb-[calc(4.85rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
             <MobileBottomNav user={user} />
           </div>
         </div>

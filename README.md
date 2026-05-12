@@ -1,16 +1,36 @@
-# InfraOS v6.12.1
+# InfraOS v6.12.2
 
 Painel interno para operação de ordens de serviço, com autenticação própria, trilha de auditoria, relatórios e fila operacional pensada para uso diário.
 
 ## O que entrou nesta versão
-- hotfix para impedir que a bottom navigation apareça no Windows/desktop;
-- desktop/notebook agora usa somente sidebar lateral;
-- mobile mantém somente bottom navigation + menu em bottom sheet;
-- padding inferior da bottom nav removido em telas grandes;
-- login redesenhado com visual mais premium, card com mais presença e menos textos;
-- ajustes rápidos de responsividade e safe area;
+- hotfix de layout desktop fluido para remover faixas laterais vazias em telas largas/zoom reduzido;
+- remoção do `max-width` global do AppShell protegido;
+- conteúdo principal agora ocupa todo o espaço restante depois da sidebar;
+- dashboard com containers fluidos, grids com `min-w-0` e melhor uso de telas 1366px, 1440px, 1920px e zoom 80% a 125%;
+- topbar e main ajustados para não gerar overflow horizontal;
+- mobile preservado com bottom navigation, safe area e sem sidebar lateral;
 - pacote sem migration nova.
 
+
+## V6.12.2 — Hotfix Layout Fluido Desktop + Responsividade por Zoom
+
+A V6.12.2 corrige o comportamento observado no Windows/desktop em zoom alterado ou telas largas, onde o painel ficava preso em uma largura máxima e sobravam faixas laterais vazias.
+
+Principais correções:
+- `AppShell` removido de `max-w-[1800px]` e `mx-auto` no layout protegido;
+- criado layout fluido com `.app-shell`, `.app-shell-layout`, `.app-shell-main`, `.app-main-content` e `.app-content-fluid`;
+- main usa `flex-1`, `min-w-0` e `w-full` para ocupar o espaço restante da sidebar;
+- dashboard ganhou classes fluidas e grids com colunas `minmax(0, 1fr)`;
+- cards superiores do dashboard usam melhor o espaço disponível em desktop;
+- gráficos e superfícies receberam proteções contra overflow horizontal;
+- padding inferior reservado para bottom nav continua restrito ao mobile;
+- sidebar desktop e bottom navigation mobile continuam mutuamente exclusivas;
+- sem migration nova.
+
+Validação recomendada:
+- desktop: testar em 1366px, 1440px e 1920px;
+- zoom: testar 80%, 90%, 100%, 110% e 125%;
+- mobile: testar 390px e 430px para confirmar que bottom navigation e safe area continuam corretas.
 
 ## V6.12.1 — Hotfix Navegação Responsiva + Login Premium
 

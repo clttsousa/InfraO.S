@@ -1983,3 +1983,142 @@ html[data-theme="dark"] .pagination-size-link-active {
     padding-inline: 0.8rem;
   }
 }
+
+/* ===== V6.12.2 HOTFIX LAYOUT FLUIDO DESKTOP + RESPONSIVIDADE POR ZOOM ===== */
+html,
+body {
+  width: 100%;
+  min-width: 0;
+}
+
+.app-shell,
+.app-shell-layout,
+.app-shell-main,
+.app-main-content {
+  min-width: 0;
+  width: 100%;
+}
+
+.app-shell-layout {
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+.app-shell-main {
+  flex: 1 1 auto;
+  overflow-x: clip;
+}
+
+.app-main-content {
+  overflow-x: clip;
+}
+
+.app-content-fluid {
+  width: 100%;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+.dashboard-page,
+.dashboard-page > *,
+.dashboard-grid-fluid,
+.dashboard-grid-fluid > * {
+  min-width: 0;
+}
+
+.topbar-surface {
+  width: 100%;
+  max-width: none;
+}
+
+.topbar-inner {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.chart-card,
+.chart-card > *,
+.chart-card .app-surface-muted {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.chart-card svg {
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-shell-bg {
+    width: 100vw;
+  }
+
+  .app-shell-layout {
+    min-height: 100vh;
+  }
+
+  .desktop-sidebar {
+    width: 96px;
+    flex: 0 0 96px;
+  }
+
+  .app-shell-main {
+    width: calc(100vw - 96px);
+  }
+
+  .app-main-content {
+    padding-bottom: 0 !important;
+  }
+
+  .dashboard-page {
+    padding-inline: clamp(1.25rem, 1.6vw, 2.25rem) !important;
+  }
+
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .app-stat-card {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-page {
+    padding-inline: clamp(1.4rem, 1.85vw, 2.6rem) !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .dashboard-page {
+    padding-inline: clamp(1.75rem, 2vw, 3rem) !important;
+  }
+
+  .chart-card {
+    min-height: 24rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-shell-layout,
+  .app-shell-main,
+  .app-main-content {
+    width: 100%;
+  }
+
+  .app-shell-main {
+    overflow-x: hidden;
+  }
+
+  .dashboard-page {
+    padding-inline: 1rem !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-stats-grid,
+  .dashboard-grid-fluid {
+    width: 100%;
+    overflow: visible;
+  }
+}

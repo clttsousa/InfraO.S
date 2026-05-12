@@ -18,11 +18,11 @@ export function DashboardCharts({ data }: { data: DashboardData }) {
   }));
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-      <Surface className="chart-card p-5">
+    <div className="dashboard-grid-fluid grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <Surface className="chart-card min-w-0 p-5">
         <BarChart data={ordersByTechnician.length ? ordersByTechnician : [{ label: "Sem dados", value: 0 }]} title="Ordens abertas por técnico" description="Leitura rápida para balanceamento da fila entre os principais técnicos." />
       </Surface>
-      <Surface className="chart-card p-5">
+      <Surface className="chart-card min-w-0 p-5">
         <PieChart data={ordersByAlert} title="Distribuição operacional" description="Panorama instantâneo dos blocos mais sensíveis da operação." />
       </Surface>
     </div>

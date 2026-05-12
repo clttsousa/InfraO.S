@@ -108,7 +108,7 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
   ] : [], [data]);
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="app-content-fluid dashboard-page space-y-6 p-4 md:p-6 xl:p-7 2xl:p-8">
       <Breadcrumbs items={[{ label: "Dashboard" }]} showHome />
       {forbidden ? <FeedbackMessage type="error">Acesso restrito ao administrador para esta área.</FeedbackMessage> : null}
       {loadError ? <FeedbackMessage type="error">{loadError}</FeedbackMessage> : null}
@@ -124,20 +124,20 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
         <Surface className="p-5"><EmptyState title="Dashboard indisponível" description="A aplicação não conseguiu consultar o banco neste momento." /></Surface>
       ) : (
         <>
-          <div className="dashboard-stats-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="dashboard-stats-grid dashboard-grid-fluid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 2xl:gap-5">
             {statCards.map((item) => <StatCard key={item.label} {...item} />)}
           </div>
 
           <DashboardCharts data={data} />
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.32fr_0.88fr]">
-            <div className="space-y-6">
+          <div className="dashboard-grid-fluid grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.32fr)_minmax(360px,0.88fr)] 2xl:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.75fr)]">
+            <div className="min-w-0 space-y-6">
               <DashboardTable title="Vencendo hoje" description="Itens que precisam de fechamento ainda hoje para evitar atraso." orders={data.dueToday} href="/orders?dueToday=1" />
               <DashboardTable title="Atrasadas" description="Atraso é tratado como condição automática. O status real da ordem continua preservado." orders={data.overdue} href="/orders?lateOnly=1" />
               <DashboardTable title="Sem atualização" description="Ordens sem movimentação recente e com risco de ficarem esquecidas." orders={data.stale} href="/orders?staleOnly=1" />
             </div>
 
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               <Surface className="animate-slideInUp p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>

@@ -130,7 +130,7 @@ export function PwaActivationPrompt() {
 
   return (
     <div className="px-4 pt-3 sm:px-6 lg:px-8">
-      <div className="app-surface-muted mx-auto flex max-w-[1700px] flex-col gap-3 rounded-[var(--radius-panel)] border border-[var(--primary)]/25 bg-[var(--primary-soft)]/60 px-4 py-3 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="app-surface-muted app-content-fluid flex flex-col gap-3 rounded-[var(--radius-panel)] border border-[var(--primary)]/25 bg-[var(--primary-soft)]/60 px-4 py-3 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 rounded-2xl border border-[var(--primary)]/25 bg-[var(--primary-soft)] p-2 text-[var(--primary)]">
             {permission === "denied" ? <BellOff className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}

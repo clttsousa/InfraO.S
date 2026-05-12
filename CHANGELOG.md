@@ -1,5 +1,15 @@
 # Changelog
 
+## v6.12.2
+- removido `max-w-[1800px]`/`mx-auto` do AppShell protegido para o painel ocupar toda a largura útil do desktop;
+- criado layout fluido com `.app-shell`, `.app-shell-layout`, `.app-shell-main`, `.app-main-content`, `.app-content-fluid` e `.dashboard-grid-fluid`;
+- corrigidas faixas laterais vazias em telas largas e com zoom reduzido no Windows/desktop;
+- conteúdo principal agora usa `flex-1`, `w-full` e `min-w-0`, mantendo a sidebar com largura fixa controlada;
+- dashboard ajustado para distribuir cards e gráficos melhor em 1366px, 1440px, 1920px e zoom 80% a 125%;
+- topbar, gráficos e superfícies receberam proteções contra overflow horizontal;
+- preservado comportamento mobile: bottom navigation apenas no mobile, sidebar apenas no desktop e padding inferior apenas em telas pequenas;
+- sem migration nova.
+
 ## v6.12.1
 - corrigida a bottom navigation aparecendo indevidamente no Windows/desktop junto com a sidebar lateral;
 - adicionada proteção CSS para esconder `.mobile-bottom-nav` e overlay de menu mobile em telas `lg` ou maiores;
