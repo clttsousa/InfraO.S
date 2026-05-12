@@ -1,5 +1,17 @@
 # Changelog
 
+## v6.12.3
+- criado utilitário client-side de diagnóstico de ambiente para identificar iOS/iPadOS, Android, Windows/Desktop, modo PWA instalado, Service Worker, Push API, Notification API e `showNotification`;
+- fluxo especial para iPhone/iPad: quando o InfraOS estiver aberto no Safari/navegador normal, o sistema não oferece ativação direta de push e mostra orientação para adicionar à Tela de Início;
+- ativação PWA no iOS fica disponível somente quando o app estiver aberto pelo ícone instalado/standalone;
+- a área **Notificações neste dispositivo** ganhou painel de diagnóstico com plataforma, modo de abertura, contexto seguro, Service Worker, Push API, permissão, subscription e último status PWA;
+- banner pós-login agora exibe instrução específica para iOS fora do PWA e mantém ocultação temporária via `localStorage`;
+- `manifest.webmanifest` recebeu ícones PNG e metadados mais compatíveis com Home Screen/iOS, mantendo SVGs como fallback;
+- `app/layout.tsx` recebeu metadados `apple-mobile-web-app-*`, apple touch icon e `viewport-fit=cover`;
+- `public/sw.js` atualizado para versão interna 6.12.3, preservando foco em push notification sem cache offline agressivo;
+- README atualizado com troubleshooting e passo a passo de teste no iPhone;
+- sem migration nova.
+
 ## v6.12.2
 - removido `max-w-[1800px]`/`mx-auto` do AppShell protegido para o painel ocupar toda a largura útil do desktop;
 - criado layout fluido com `.app-shell`, `.app-shell-layout`, `.app-shell-main`, `.app-main-content`, `.app-content-fluid` e `.dashboard-grid-fluid`;
@@ -147,6 +159,18 @@
 
 # Changelog
 
+## v6.12.3
+- criado utilitário client-side de diagnóstico de ambiente para identificar iOS/iPadOS, Android, Windows/Desktop, modo PWA instalado, Service Worker, Push API, Notification API e `showNotification`;
+- fluxo especial para iPhone/iPad: quando o InfraOS estiver aberto no Safari/navegador normal, o sistema não oferece ativação direta de push e mostra orientação para adicionar à Tela de Início;
+- ativação PWA no iOS fica disponível somente quando o app estiver aberto pelo ícone instalado/standalone;
+- a área **Notificações neste dispositivo** ganhou painel de diagnóstico com plataforma, modo de abertura, contexto seguro, Service Worker, Push API, permissão, subscription e último status PWA;
+- banner pós-login agora exibe instrução específica para iOS fora do PWA e mantém ocultação temporária via `localStorage`;
+- `manifest.webmanifest` recebeu ícones PNG e metadados mais compatíveis com Home Screen/iOS, mantendo SVGs como fallback;
+- `app/layout.tsx` recebeu metadados `apple-mobile-web-app-*`, apple touch icon e `viewport-fit=cover`;
+- `public/sw.js` atualizado para versão interna 6.12.3, preservando foco em push notification sem cache offline agressivo;
+- README atualizado com troubleshooting e passo a passo de teste no iPhone;
+- sem migration nova.
+
 ## v5.2.2
 - hotfix de tipagem em `lib/server-data/shared.ts`, garantindo que `mapOrderDetail` retorne `auditEvents: []` por padrão para satisfazer o tipo `ServiceOrderDetail`
 
@@ -236,6 +260,18 @@
 - mantém o fundo visual e a identidade sem excesso de informação
 
 # Changelog
+
+## v6.12.3
+- criado utilitário client-side de diagnóstico de ambiente para identificar iOS/iPadOS, Android, Windows/Desktop, modo PWA instalado, Service Worker, Push API, Notification API e `showNotification`;
+- fluxo especial para iPhone/iPad: quando o InfraOS estiver aberto no Safari/navegador normal, o sistema não oferece ativação direta de push e mostra orientação para adicionar à Tela de Início;
+- ativação PWA no iOS fica disponível somente quando o app estiver aberto pelo ícone instalado/standalone;
+- a área **Notificações neste dispositivo** ganhou painel de diagnóstico com plataforma, modo de abertura, contexto seguro, Service Worker, Push API, permissão, subscription e último status PWA;
+- banner pós-login agora exibe instrução específica para iOS fora do PWA e mantém ocultação temporária via `localStorage`;
+- `manifest.webmanifest` recebeu ícones PNG e metadados mais compatíveis com Home Screen/iOS, mantendo SVGs como fallback;
+- `app/layout.tsx` recebeu metadados `apple-mobile-web-app-*`, apple touch icon e `viewport-fit=cover`;
+- `public/sw.js` atualizado para versão interna 6.12.3, preservando foco em push notification sem cache offline agressivo;
+- README atualizado com troubleshooting e passo a passo de teste no iPhone;
+- sem migration nova.
 
 ## v5.2.0
 - aplicação da v4.7 com UI de auditoria dentro do detalhe da O.S. e nova tela administrativa global de auditoria

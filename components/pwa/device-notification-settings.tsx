@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BellRing, BellOff, CheckCircle2, Loader2, Smartphone, TriangleAlert, Activity, Radio, ShieldCheck, MonitorSmartphone, Trash2 } from "lucide-react";
 import { useNotifications } from "@/components/providers/notification-provider";
+import { canRequestPushOnThisContext, useDeviceEnvironment } from "@/components/pwa/device-environment";
 
 export type PermissionStateLabel = "not-requested" | "granted" | "denied" | "unsupported";
 
@@ -139,6 +140,7 @@ export function DeviceNotificationSettings({ compact = false }: { compact?: bool
   const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const environment = useDeviceEnvironment();
 
   const refresh = useCallback(async () => {
     setPermission(getBrowserPermission());
@@ -159,6 +161,8 @@ export function DeviceNotificationSettings({ compact = false }: { compact?: bool
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
   const active = Boolean(status?.currentDeviceActive && permission === "granted");
   const stateLabel = permissionText(permission, active, Boolean(status?.currentDeviceKnown));
+  const canActivate = canRequestPushOnThisContext(environment);
+  const iosNeedsHomeScreen = Boolean(environment.ready && environment.isIOS && !environment.isStandalone);
 
   const tone = useMemo(() => {
     if (active) return "badge-success";
@@ -173,11 +177,17 @@ export function DeviceNotificationSettings({ compact = false }: { compact?: bool
       if (!status?.configured || !publicKey) {
         throw new Error("As chaves VAPID ainda não foram configuradas no ambiente.");
       }
-      if (permission === "unsupported") {
-        throw new Error("Este navegador não suporta Push Notification/PWA.");
-      }
-      if (!window.isSecureContext && window.location.hostname !== "localhost") {
-        throw new Error("Notificações exigem HTTPS em produção.");
+      if (!canActivate) {
+        if (iosNeedsHomeScreen) {
+          throw new Error("No iPhone, adicione o InfraOS à Tela de Início e abra pelo ícone instalado antes de ativar notificações.");
+        }
+        if (permission === "unsupported") {
+          throw new Error("Este navegador não suporta Push Notification/PWA.");
+        }
+        if (!window.isSecureContext && window.location.hostname !== "localhost") {
+          throw new Error("Notificações exigem HTTPS em produção.");
+        }
+        throw new Error("Este contexto não permite ativar notificações push.");
       }
 
       const nextPermission = await Notification.requestPermission();
@@ -343,6 +353,38 @@ export function DeviceNotificationSettings({ compact = false }: { compact?: bool
               <BellOff className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" /> O navegador bloqueou notificações. Libere o site nas permissões do navegador e tente novamente.
             </div>
           ) : null}
+          {iosNeedsHomeScreen ? (
+            <div className="mt-3 rounded-[var(--radius-control)] border border-[var(--warning)]/25 bg-[var(--warning-soft)] px-3 py-3 text-sm text-[var(--text-secondary)]">
+              <div className="flex items-start gap-2">
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
+                <div>
+                  <p className="font-semibold text-[var(--text-primary)]">iPhone detectado fora do app instalado</p>
+                  <p className="mt-1 leading-5">No iPhone, as notificações do InfraOS só funcionam quando o sistema está adicionado à Tela de Início e aberto pelo ícone criado.</p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-5 text-[var(--text-muted)]">
+                    <li>Abra o InfraOS no Safari.</li>
+                    <li>Toque em Compartilhar.</li>
+                    <li>Toque em Adicionar à Tela de Início.</li>
+                    <li>Abra pelo ícone do InfraOS e faça login.</li>
+                    <li>Volte aqui e ative as notificações.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] p-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Diagnóstico do dispositivo</div>
+            <div className="mt-3 grid gap-2 text-xs text-[var(--text-secondary)] sm:grid-cols-2 lg:grid-cols-3">
+              <div><span className="font-semibold text-[var(--text-primary)]">Plataforma:</span> {environment.platformLabel}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Abertura:</span> {environment.isStandalone ? "PWA instalado" : "Navegador normal"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Contexto seguro:</span> {environment.secureContext ? "sim" : "não"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Service Worker:</span> {environment.serviceWorkerSupported ? environment.serviceWorkerActive ? "ativo" : environment.serviceWorkerRegistered ? "registrado" : "disponível" : "indisponível"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Push API:</span> {environment.pushManagerSupported ? "disponível" : "indisponível"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">showNotification:</span> {environment.showNotificationSupported ? "disponível" : "pendente/indisponível"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Permissão:</span> {environment.notificationPermission === "default" ? "não solicitada" : environment.notificationPermission === "granted" ? "permitida" : environment.notificationPermission === "denied" ? "bloqueada" : "indisponível"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Subscription:</span> {active ? "ativa" : status?.currentDeviceKnown ? "inativa" : "não cadastrada"}</div>
+              <div><span className="font-semibold text-[var(--text-primary)]">Último PWA:</span> {status?.lastDelivery?.status ?? "sem registro"}</div>
+            </div>
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           {active ? (
@@ -350,7 +392,7 @@ export function DeviceNotificationSettings({ compact = false }: { compact?: bool
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellOff className="h-4 w-4" />}Desativar
             </button>
           ) : (
-            <button type="button" className="btn-base btn-primary btn-md" onClick={activate} disabled={loading || permission === "unsupported"}>
+            <button type="button" className="btn-base btn-primary btn-md" onClick={activate} disabled={loading || !canActivate}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />}Ativar notificações
             </button>
           )}

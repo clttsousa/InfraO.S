@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, BellOff, Loader2, X } from "lucide-react";
+import { BellRing, BellOff, Loader2, X, Smartphone } from "lucide-react";
 import { useNotifications } from "@/components/providers/notification-provider";
 import { arrayBufferEquals, getBrowserPermission, getServiceWorkerRegistration, urlBase64ToUint8Array, type PermissionStateLabel } from "@/components/pwa/device-notification-settings";
+import { canRequestPushOnThisContext, useDeviceEnvironment } from "@/components/pwa/device-environment";
 
 const SNOOZE_KEY = "infraos:pwa-activation-snooze-until:v1";
+const IOS_GUIDE_SNOOZE_KEY = "infraos:pwa-ios-guide-snooze-until:v1";
 const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 type PushStatus = {
@@ -14,18 +16,18 @@ type PushStatus = {
   currentDeviceKnown: boolean;
 };
 
-function readSnoozed() {
+function readSnoozed(key = SNOOZE_KEY) {
   try {
-    const value = Number(window.localStorage.getItem(SNOOZE_KEY) ?? "0");
+    const value = Number(window.localStorage.getItem(key) ?? "0");
     return Number.isFinite(value) && value > Date.now();
   } catch {
     return false;
   }
 }
 
-function snooze() {
+function snooze(key = SNOOZE_KEY) {
   try {
-    window.localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+    window.localStorage.setItem(key, String(Date.now() + SNOOZE_MS));
   } catch {
     // localStorage pode estar indisponível; apenas oculta até o próximo carregamento.
   }
@@ -49,10 +51,19 @@ export function PwaActivationPrompt() {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [permission, setPermission] = useState<PermissionStateLabel>("unsupported");
+  const environment = useDeviceEnvironment();
 
   const refresh = useCallback(async () => {
     if (typeof window === "undefined") return;
     if (readSnoozed()) return;
+
+    if (environment.ready && environment.isIOS && !environment.isStandalone) {
+      if (!readSnoozed(IOS_GUIDE_SNOOZE_KEY)) {
+        setPermission("unsupported");
+        setVisible(true);
+      }
+      return;
+    }
 
     const browserPermission = getBrowserPermission();
     setPermission(browserPermission);
@@ -66,7 +77,7 @@ export function PwaActivationPrompt() {
     } catch {
       setVisible(false);
     }
-  }, []);
+  }, [environment.ready, environment.isIOS, environment.isStandalone]);
 
   useEffect(() => {
     void refresh();
@@ -77,8 +88,14 @@ export function PwaActivationPrompt() {
     try {
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
       if (!publicKey) throw new Error("Chave pública VAPID não configurada.");
-      if (!window.isSecureContext && window.location.hostname !== "localhost") {
-        throw new Error("Notificações exigem HTTPS em produção.");
+      if (!canRequestPushOnThisContext(environment)) {
+        if (environment.isIOS && !environment.isStandalone) {
+          throw new Error("No iPhone, adicione o InfraOS à Tela de Início e abra pelo ícone instalado antes de ativar notificações.");
+        }
+        if (!window.isSecureContext && window.location.hostname !== "localhost") {
+          throw new Error("Notificações exigem HTTPS em produção.");
+        }
+        throw new Error("Este navegador/contexto não permite ativar Push Notification.");
       }
 
       const nextPermission = await Notification.requestPermission();
@@ -121,7 +138,7 @@ export function PwaActivationPrompt() {
   }
 
   function dismiss() {
-    snooze();
+    snooze(environment.isIOS && !environment.isStandalone ? IOS_GUIDE_SNOOZE_KEY : SNOOZE_KEY);
     setVisible(false);
     info("Você pode ativar depois em Configurações > Notificações neste dispositivo.", { title: "Lembrete ocultado" });
   }
@@ -133,21 +150,35 @@ export function PwaActivationPrompt() {
       <div className="app-surface-muted app-content-fluid flex flex-col gap-3 rounded-[var(--radius-panel)] border border-[var(--primary)]/25 bg-[var(--primary-soft)]/60 px-4 py-3 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 rounded-2xl border border-[var(--primary)]/25 bg-[var(--primary-soft)] p-2 text-[var(--primary)]">
-            {permission === "denied" ? <BellOff className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
+            {environment.isIOS && !environment.isStandalone ? <Smartphone className="h-4 w-4" /> : permission === "denied" ? <BellOff className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
           </div>
           <div className="min-w-0">
-            <p className="app-title text-sm font-semibold">Ative as notificações do InfraOS neste dispositivo</p>
-            <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">
-              Receba lembretes de intervenções programadas no Windows/celular, mesmo fora da aba do navegador.
-            </p>
+            <p className="app-title text-sm font-semibold">{environment.isIOS && !environment.isStandalone ? "Instale o InfraOS na Tela de Início" : "Ative as notificações do InfraOS neste dispositivo"}</p>
+            {environment.isIOS && !environment.isStandalone ? (
+              <div className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">
+                <p>No iPhone, as notificações só funcionam com o InfraOS adicionado à Tela de Início e aberto pelo ícone instalado.</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-[var(--text-muted)]">
+                  <li>Abra no Safari.</li>
+                  <li>Toque em Compartilhar.</li>
+                  <li>Toque em Adicionar à Tela de Início.</li>
+                  <li>Abra pelo ícone criado e ative as notificações.</li>
+                </ol>
+              </div>
+            ) : (
+              <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">
+                Receba lembretes de intervenções programadas no Windows/celular, mesmo fora da aba do navegador.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 gap-2 sm:items-center">
-          <button type="button" className="btn-base btn-primary btn-sm" onClick={activate} disabled={loading}>
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BellRing className="h-3.5 w-3.5" />}Ativar
-          </button>
+          {environment.isIOS && !environment.isStandalone ? null : (
+            <button type="button" className="btn-base btn-primary btn-sm" onClick={activate} disabled={loading}>
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BellRing className="h-3.5 w-3.5" />}Ativar
+            </button>
+          )}
           <button type="button" className="btn-base btn-secondary btn-sm" onClick={dismiss} disabled={loading}>
-            <X className="h-3.5 w-3.5" />Agora não
+            <X className="h-3.5 w-3.5" />{environment.isIOS && !environment.isStandalone ? "Entendi" : "Agora não"}
           </button>
         </div>
       </div>

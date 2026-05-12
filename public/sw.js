@@ -1,5 +1,7 @@
-/* InfraOS V6.9.1 — Service Worker focado em Push Notification.
+/* InfraOS V6.12.3 — Service Worker focado em Push Notification.
    Não aplica cache agressivo para evitar telas desatualizadas. */
+
+const INFRAOS_SW_VERSION = "6.12.3";
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -36,7 +38,8 @@ self.addEventListener('push', (event) => {
     data: {
       url: payload.url || '/notifications',
       notificationId: payload.notificationId || null,
-      eventId: payload.eventId || null
+      eventId: payload.eventId || null,
+      version: INFRAOS_SW_VERSION
     }
   };
 

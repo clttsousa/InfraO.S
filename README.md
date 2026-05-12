@@ -354,6 +354,26 @@ Depois do deploy em HTTPS, acesse `/notifications` e use **Ativar notificações
 
 A V6.9 não usa cache offline agressivo. O `public/sw.js` recebe apenas eventos `push` e `notificationclick`, evitando telas antigas após atualização do sistema.
 
+### iPhone/iOS: ativação correta
+
+No iPhone/iPad, não trate a ativação igual ao Windows/Android. A tela **Notificações neste dispositivo** agora detecta iOS e informa se o InfraOS está aberto como navegador normal ou como PWA instalado.
+
+Fluxo recomendado para teste no iPhone:
+
+1. Remova o ícone antigo do InfraOS da Tela de Início, se ele foi adicionado antes desta versão.
+2. Abra o InfraOS no Safari usando a URL em HTTPS.
+3. Toque em **Compartilhar**.
+4. Toque em **Adicionar à Tela de Início**.
+5. Abra o InfraOS pelo ícone criado.
+6. Faça login.
+7. Acesse **Configurações** ou **Notificações**.
+8. Verifique o painel **Diagnóstico do dispositivo**.
+9. Ative notificações, use **Testar local** e depois **Enviar teste push**.
+
+Se o diagnóstico mostrar **iOS / Navegador normal**, o botão de ativar push fica bloqueado e o sistema exibe a orientação de instalação na Tela de Início.
+
+Se **Testar local** falhar, o problema está no iOS/permissão/PWA instalado. Se **Testar local** funcionar e **Enviar teste push** falhar, confira `notification_delivery_logs` e as chaves VAPID.
+
 Teste manual:
 
 ```bash
