@@ -22,7 +22,7 @@ export function InterventionList({ items, selectedId, pulseId, onSelect }: { ite
             type="button"
             onClick={() => onSelect(item.id)}
             className={cn(
-              "group w-full rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-md)]",
+              "intervention-card-mobile group w-full rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-md)]",
               selected ? "border-[var(--primary)] ring-2 ring-[var(--primary-soft)]" : "",
               pulse ? "animate-pulse" : ""
             )}

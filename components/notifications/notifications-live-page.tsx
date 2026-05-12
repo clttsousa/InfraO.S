@@ -75,7 +75,7 @@ export function NotificationsLivePage({ initialSummary }: { initialSummary: Noti
 
       <DeviceNotificationSettings compact />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="notification-overview-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <NotificationOverviewCard title="Alertas críticos" value={summary.counts.late} description="Ordens com prazo vencido e necessidade de ação imediata." tone="danger" icon={<AlertTriangle className="h-5 w-5" />} />
         <NotificationOverviewCard title="Vencem hoje" value={summary.counts.dueToday} description="Itens que ainda podem virar atraso no decorrer do dia." tone="warning" icon={<CalendarClock className="h-5 w-5" />} />
         <NotificationOverviewCard title="Sem atualização" value={summary.counts.stale} description="Ordens sem movimentação recente e com risco de ficarem esquecidas." tone="info" icon={<Clock3 className="h-5 w-5" />} />

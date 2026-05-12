@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { NotificationProvider } from "@/components/providers/notification-provider";
 import { SystemPreferencesProvider } from "@/components/providers/system-preferences-provider";
@@ -17,6 +17,14 @@ export const metadata: Metadata = {
     title: "InfraOS",
     statusBarStyle: "black-translucent"
   }
+};
+
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0f172a"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

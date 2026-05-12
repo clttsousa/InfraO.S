@@ -238,7 +238,7 @@ export function InterventionWorkspaceClient({ baseQueryString, items, internalUs
 
   return (
     <>
-      <div className="flex justify-end">
+      <div className="intervention-action-row flex justify-end">
         <Button type="button" onClick={openNew}><Plus className="h-4 w-4" />Nova intervenção</Button>
       </div>
       <InterventionList items={interventions} selectedId={selectedId} pulseId={pulseId} onSelect={openIntervention} />
@@ -256,7 +256,7 @@ export function InterventionWorkspaceClient({ baseQueryString, items, internalUs
       </InterventionDetailDrawer>
 
       <OrderActionOverlay isOpen={isNewActionOpen} closeHref={baseHref} onClose={closeNew}>
-        <div className="app-panel animate-scaleIn relative z-[73] w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)]">
+        <div className="app-panel animate-scaleIn new-intervention-modal relative z-[73] w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)]">
           <div className="sticky top-0 z-10 -mx-5 flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface-elevated)] px-5 pb-4 pt-1">
             <div>
               <p className="app-eyebrow text-xs font-medium">Cadastro operacional</p>

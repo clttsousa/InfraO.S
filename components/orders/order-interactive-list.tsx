@@ -42,34 +42,36 @@ function OrderMobileCard({ order, isSelected, isPulsing, onOpen }: { order: Serv
       onClick={onOpen}
       aria-pressed={isSelected}
       aria-label={`Abrir detalhes da ordem ${order.number}`}
-      className={`order-card order-card-button app-surface animate-slideInUp w-full p-4 text-left ${toneClass} ${isSelected ? "table-row-selected" : ""} ${isPulsing ? "table-row-live-update" : ""}`}
+      className={`order-card order-mobile-card order-card-button app-surface animate-slideInUp w-full p-3.5 text-left ${toneClass} ${isSelected ? "table-row-selected" : ""} ${isPulsing ? "table-row-live-update" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap gap-2"><StatusBadge status={order.status} /><PriorityBadge priority={order.priority} /></div>
           <div className="app-number text-sm font-semibold break-all">{order.number}</div>
-          <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{order.clientName ?? "Sem cliente"}</p>
+          <p className="text-sm font-medium leading-5 text-[var(--text-primary)]">{order.clientName ?? "Sem cliente"}</p>
         </div>
         <div className="order-open-indicator shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-tertiary)]">
           <ChevronRight className="h-4 w-4" />
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Técnico</p>
-          <p className="mt-1 text-sm text-[var(--text-primary)]">{order.teamSummary}</p>
-          <p className="mt-1 text-xs text-[var(--text-tertiary)]">Resp. interno: {order.internalOwner}</p>
+      <div className="mt-3 space-y-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)]/55 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Prazo</span>
+          <span className="text-right text-sm font-semibold text-[var(--text-primary)]">{order.deadline}</span>
         </div>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Prazo</p>
-          <p className="mt-1 text-sm text-[var(--text-primary)]">{order.deadline}</p>
-          <div className="mt-2"><OrderAlertSummary order={order} /></div>
-        </div>
+        <OrderAlertSummary order={order} />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2"><StatusBadge status={order.status} /><PriorityBadge priority={order.priority} /></div>
-        <span className="text-xs font-medium text-[var(--text-tertiary)]">Toque para abrir</span>
+      <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Técnico</p>
+          <p className="mt-1 truncate text-[var(--text-primary)]">{order.teamSummary}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Responsável</p>
+          <p className="mt-1 truncate text-[var(--text-primary)]">{order.internalOwner}</p>
+        </div>
       </div>
     </button>
   );

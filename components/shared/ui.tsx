@@ -12,7 +12,7 @@ export function PageHeader({ eyebrow, title, description, actions, className = "
     <div className={cn("animate-slideInUp flex flex-col gap-4 md:flex-row md:items-start md:justify-between", className)}>
       <div className="min-w-0">
         {eyebrow ? <p className="app-eyebrow text-xs font-medium">{eyebrow}</p> : null}
-        <h2 className="app-title mt-1 text-[2rem] font-semibold leading-tight md:text-[2.2rem]">{title}</h2>
+        <h2 className="app-title mt-1 text-[1.55rem] font-semibold leading-tight md:text-[2.2rem]">{title}</h2>
         {description ? <p className="app-text-secondary mt-2 max-w-3xl text-sm leading-6">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}

@@ -1,3 +1,16 @@
+# V6.10.0 — Mobile First e Login Premium
+
+- Adicionada navegação inferior fixa no mobile com atalhos para Início, Ordens, Intervenções, Alertas e Menu.
+- O shell protegido agora reserva espaço inferior com `env(safe-area-inset-bottom)`, evitando que o conteúdo fique escondido atrás da navegação no iPhone/Android.
+- Topbar mobile simplificada, com título menor, ações compactas e remoção de botões pesados em telas pequenas.
+- Página de login redesenhada com painel editorial no desktop, card mais leve no mobile e hierarquia visual mais clara.
+- A central de notificações agora usa carrossel horizontal de cards no mobile, evitando grid empilhado alto demais.
+- Cards mobile de O.S. foram compactados para priorizar número, cliente, prazo, alertas e responsáveis sem sensação de tabela espremida.
+- Filtros de O.S. ganharam tratamento mobile com chips horizontais roláveis e áreas de toque maiores.
+- Intervenções programadas receberam ação flutuante no mobile para **Nova intervenção**, cards mais compactos e modal ajustado para telas pequenas.
+- Drawers de detalhes receberam comportamento visual mais próximo de bottom sheet no mobile, com bordas arredondadas, drag handle e respeito ao safe area.
+- Sem migration nova; alterações focadas em UX/UI, responsividade e shell mobile.
+
 # V6.9.1 — Hotfix Push PWA
 
 - Corrigida a criptografia `aes128gcm` da implementação local de Web Push para o fluxo RFC 8291, evitando o cenário em que o push service aceita a requisição, mas o navegador não consegue descriptografar/exibir a notificação.

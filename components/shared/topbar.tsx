@@ -43,15 +43,15 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
 
   return (
     <>
-      <header className="topbar-surface sticky top-0 z-20 border-b border-[var(--border)] px-4 py-4 backdrop-blur md:px-6">
-        <div className="topbar-inner flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+      <header className="topbar-surface sticky top-0 z-20 border-b border-[var(--border)] px-3 py-3 backdrop-blur md:px-6 md:py-4">
+        <div className="topbar-inner flex items-center justify-between gap-3">
+          <div className="topbar-title-group flex min-w-0 items-center gap-2 md:gap-3">
             <button onClick={onMenuClick} className="btn-base btn-secondary btn-md h-10 w-10 rounded-[var(--radius-control)] p-0 lg:hidden" aria-label="Abrir navegação lateral">
               <Menu className="h-5 w-5" />
             </button>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="app-title truncate text-[1.85rem] font-semibold leading-tight md:text-[2.15rem]">{titleByPathname[pathname] ?? "InfraOS"}</h1>
+                <h1 className="app-title app-topbar-title truncate text-[1.28rem] font-semibold leading-tight md:text-[2.15rem]">{titleByPathname[pathname] ?? "InfraOS"}</h1>
                 {user.role === "ADMIN" ? <span className="badge-base badge-primary hidden sm:inline-flex"><Shield className="h-3.5 w-3.5" />Admin</span> : null}
               </div>
               <p className="topbar-context mt-1 hidden truncate text-sm text-[var(--text-tertiary)] md:block">
@@ -59,7 +59,7 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
               </p>
             </div>
           </div>
-          <div className="topbar-actions flex w-full items-center gap-2 md:w-auto">
+          <div className="topbar-actions flex shrink-0 items-center justify-end gap-1.5 md:gap-2">
             {preferences.showCommandPaletteHint ? (
               <button type="button" onClick={() => setIsOpen(true)} className="command-hint-trigger app-surface-muted hidden items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 lg:inline-flex">
                 <Search className="h-4 w-4 text-[var(--text-tertiary)]" />
@@ -69,8 +69,8 @@ export function Topbar({ pathname, user, notifications, onMenuClick }: { pathnam
             ) : null}
             <NotificationBell summary={notifications} />
             <ThemeToggle />
-            <Link href="/orders/new" className="flex-1 sm:flex-none"><Button className="w-full sm:w-auto">Nova O.S.</Button></Link>
-            <LogoutButton userName={user.name} />
+            <Link href="/orders/new" className="hidden sm:block"><Button>Nova O.S.</Button></Link>
+            <div className="hidden sm:block"><LogoutButton userName={user.name} /></div>
           </div>
         </div>
       </header>

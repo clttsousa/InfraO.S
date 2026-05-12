@@ -176,6 +176,32 @@ npm install
 npm run dev
 ```
 
+
+## V6.10 — Mobile First e Login Premium
+
+A V6.10 não exige migration nova. Ela melhora a experiência mobile e a tela de login:
+
+- navegação inferior fixa no mobile;
+- topbar compacta em telas pequenas;
+- login com visual mais premium no desktop e mais leve no celular;
+- cards de O.S. e intervenções mais legíveis no mobile;
+- filtros com chips horizontais roláveis;
+- central de notificações com cards em carrossel no mobile;
+- drawers com comportamento visual de bottom sheet e safe area para iPhone/Android/PWA.
+
+### Como os lembretes de intervenção estão configurados
+
+Na configuração atual, ao criar ou editar uma intervenção programada, o InfraOS sincroniza automaticamente dois lembretes:
+
+```text
+one_day_before = 1 dia antes, às 08:00
+same_day       = no dia da intervenção, às 08:00
+```
+
+O fuso usado é `America/Sao_Paulo`. A rota `/api/cron/reminders` processa os lembretes que já venceram e, no Vercel, o `vercel.json` está configurado para rodar todos os dias às `11:00 UTC`, equivalente a `08:00` BRT.
+
+A base já possui os tipos `two_hours_before` e `thirty_minutes_before`, mas eles estão apenas preparados para versão futura e ainda não são gerados automaticamente.
+
 ## Cron de lembretes
 
 A rota de processamento é:
