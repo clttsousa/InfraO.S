@@ -2,18 +2,47 @@ import type { ReactNode } from "react";
 import { Activity, Clock3, Search, ShieldCheck, ShieldUser, UserCog, UserPlus, Users, Wifi, WifiOff } from "lucide-react";
 import { createInternalUserAction, resetInternalUserPasswordAction, toggleInternalUserAction, updateInternalUserAction, updateInternalUserRoleAction } from "./actions";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { PaginationFooter } from "@/components/shared/pagination-footer";
 import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { UserRoleForm } from "@/components/users/user-role-form";
 import { UsersRealtimeSync } from "@/components/users/users-realtime-sync";
 import { UserToggleForm } from "@/components/users/user-toggle-form";
 import { Button, ButtonLink, EmptyState, FeedbackMessage, FormSection, PageHeader, SelectInput, Surface, TextInput } from "@/components/shared/ui";
-import { getInternalUserById, getInternalUsers } from "@/lib/data";
+import { getInternalUserById, getInternalUsersPageData } from "@/lib/data";
 import { requireAdmin } from "@/lib/session";
-import type { InternalUserItem } from "@/types";
+import type { InternalUserFilters, InternalUserItem } from "@/types";
 import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 export const dynamic = "force-dynamic";
+
+const USER_PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const DEFAULT_USER_PAGE_SIZE = 25;
+
+function getStringParam(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : "";
+}
+
+function getPositiveIntParam(value: string | string[] | undefined, fallback: number) {
+  const parsed = Number(getStringParam(value));
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function sanitizeUserPageSize(value: string | string[] | undefined) {
+  const parsed = getPositiveIntParam(value, DEFAULT_USER_PAGE_SIZE);
+  return USER_PAGE_SIZE_OPTIONS.includes(parsed as (typeof USER_PAGE_SIZE_OPTIONS)[number]) ? parsed : DEFAULT_USER_PAGE_SIZE;
+}
+
+function buildUsersQuery(filters: InternalUserFilters) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.accountStatus && filters.accountStatus !== "all") params.set("status", filters.accountStatus);
+  if (filters.role && filters.role !== "all") params.set("role", filters.role);
+  if (filters.presence && filters.presence !== "all") params.set("presence", filters.presence);
+  if (filters.page && filters.page > 1) params.set("page", String(filters.page));
+  if (filters.pageSize && filters.pageSize !== DEFAULT_USER_PAGE_SIZE) params.set("pageSize", String(filters.pageSize));
+  return params;
+}
 
 function normalizeText(value: string) { return value.trim().toLowerCase(); }
 
@@ -157,32 +186,37 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
   const resetId = typeof params.reset === "string" ? params.reset : "";
   const success = typeof params.success === "string" ? decodeSearchParamMessage(params.success) : "";
   const error = typeof params.error === "string" ? decodeSearchParamMessage(params.error) : "";
-  const q = typeof params.q === "string" ? params.q : "";
-  const accountFilter = typeof params.status === "string" ? params.status : "all";
-  const roleFilter = typeof params.role === "string" ? params.role : "all";
-  const presenceFilter = typeof params.presence === "string" ? params.presence : "all";
+  const q = getStringParam(params.q).trim();
+  const accountFilter = getStringParam(params.status) || "all";
+  const roleFilter = getStringParam(params.role) || "all";
+  const presenceFilter = getStringParam(params.presence) || "all";
+  const page = getPositiveIntParam(params.page, 1);
+  const pageSize = sanitizeUserPageSize(params.pageSize);
+  const filters: InternalUserFilters = {
+    q,
+    accountStatus: accountFilter === "active" || accountFilter === "inactive" ? accountFilter : "all",
+    role: roleFilter === "ADMIN" || roleFilter === "OPERADOR" ? roleFilter : "all",
+    presence: presenceFilter === "ONLINE" || presenceFilter === "AUSENTE" || presenceFilter === "OFFLINE" ? presenceFilter : "all",
+    page,
+    pageSize
+  };
 
-  const users = sortUsersByRecentActivity(await getInternalUsers());
-  const editing = editId ? await getInternalUserById(editId) : null;
-  const resetting = resetId ? await getInternalUserById(resetId) : null;
+  const [pageData, editing, resetting] = await Promise.all([
+    getInternalUsersPageData(filters),
+    editId ? getInternalUserById(editId) : Promise.resolve(null),
+    resetId ? getInternalUserById(resetId) : Promise.resolve(null)
+  ]);
 
-  const normalizedQuery = normalizeText(q);
-  const filteredUsers = users.filter((user) => {
-    const matchesQuery = !normalizedQuery || normalizeText(user.name).includes(normalizedQuery) || normalizeText(user.email).includes(normalizedQuery);
-    const matchesAccount = accountFilter === "all" || (accountFilter === "active" ? user.active : !user.active);
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesPresence = presenceFilter === "all" || user.presenceStatus === presenceFilter;
-    return matchesQuery && matchesAccount && matchesRole && matchesPresence;
-  });
-
-  const totalUsers = users.length;
-  const activeUsers = users.filter((user) => user.active).length;
-  const admins = users.filter((user) => user.role === "ADMIN").length;
-  const inactiveUsers = totalUsers - activeUsers;
-  const onlineUsers = users.filter((user) => user.presenceStatus === "ONLINE").length;
-  const awayUsers = users.filter((user) => user.presenceStatus === "AUSENTE").length;
-  const activeFilterChips = buildActiveFilterChips({ q, accountFilter, roleFilter, presenceFilter });
+  const filteredUsers = pageData.items;
+  const totalUsers = pageData.summary.total;
+  const activeUsers = pageData.summary.active;
+  const admins = pageData.summary.admins;
+  const inactiveUsers = pageData.summary.inactive;
+  const onlineUsers = pageData.summary.online;
+  const awayUsers = pageData.summary.away;
+  const activeFilterChips = buildActiveFilterChips({ q, accountFilter: filters.accountStatus ?? "all", roleFilter: filters.role ?? "all", presenceFilter: filters.presence ?? "all" });
   const clearFiltersHref = "/users";
+  const baseQuery = buildUsersQuery(filters);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -292,6 +326,7 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
             </div>
 
             <form className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_170px_180px_180px_auto]">
+              <input type="hidden" name="pageSize" value={pageData.pageSize} />
               <TextInput label="Buscar por nome ou e-mail" name="q" defaultValue={q} placeholder="Ex.: João ou joao@empresa.com" />
               <SelectInput label="Conta" name="status" defaultValue={accountFilter} options={[{ label: "Todas", value: "all" }, { label: "Ativas", value: "active" }, { label: "Inativas", value: "inactive" }]} />
               <SelectInput label="Presença" name="presence" defaultValue={presenceFilter} options={[{ label: "Todas", value: "all" }, { label: "Online", value: "ONLINE" }, { label: "Ausente", value: "AUSENTE" }, { label: "Offline", value: "OFFLINE" }]} />
@@ -312,7 +347,7 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
               </div>
             ) : null}
 
-            <div className="mt-4 text-sm text-[var(--text-secondary)]">{filteredUsers.length} usuário(s) encontrados com os filtros atuais.</div>
+            <div className="mt-4 text-sm text-[var(--text-secondary)]">{pageData.total} usuário(s) encontrados com os filtros atuais. Exibindo {filteredUsers.length} nesta página.</div>
           </Surface>
 
           <div className="space-y-4 lg:hidden">
@@ -389,6 +424,19 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
               </table>
             </div>
           </Surface>
+
+          {pageData.total > 0 ? (
+            <PaginationFooter
+              basePath="/users"
+              baseQuery={baseQuery}
+              page={pageData.page}
+              totalPages={pageData.totalPages}
+              pageSize={pageData.pageSize}
+              total={pageData.total}
+              pageSizeOptions={USER_PAGE_SIZE_OPTIONS}
+              label="usuário(s)"
+            />
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,5 +1,57 @@
 # Changelog
 
+## V6.17.0 — Performance, Paginação e Busca
+
+- Intervenções passaram a usar paginação server-side com total, página atual, próxima/anterior e seletor de quantidade por página.
+- Busca de Intervenções foi movida para o banco, cobrindo título, localidade, tipo, origem, status, mensagem original e observações.
+- Usuários internos passaram a usar paginação server-side, busca por nome/e-mail/perfil e filtros por status, perfil e presença no banco.
+- Auditoria passou a usar paginação server-side, filtros por período, usuário, entidade, ação e busca textual por O.S., intervenção, entidade, ação, usuário e descrição.
+- Central de Notificações agora pagina a fila por filtro: Todas, Intervenções, Ordens, Sistema e Lidas.
+- Busca de Ordens foi ampliada para técnico principal, equipe de apoio, responsável interno, status, prioridade, cliente, descrição, endereço e número da O.S.
+- Criado componente reutilizável `PaginationFooter` para padronizar paginação desktop e mobile.
+- Filtros importantes permanecem na URL, preservando contexto ao atualizar, compartilhar link, voltar/avançar ou abrir detalhes.
+- Dashboard mantém consultas limitadas/agregadas e recebeu cache key atualizada para a versão.
+- Criada migration `database/20_performance_indexes.sql` com índices para filtros, prazos, busca textual, notificações, auditoria, usuários e atividades.
+
+## V6.16.0 — Dashboard Operacional + Melhor Uso de Tela Larga
+
+- Criada/fortalecida a seção superior **Prioridade operacional** no Dashboard, respondendo rapidamente o que precisa de atenção agora.
+- Adicionados cards clicáveis para O.S. atrasadas, O.S. vencendo hoje, O.S. sem atualização, intervenções de hoje, intervenções de amanhã, notificações críticas e lembretes pendentes.
+- Dashboard mobile prioriza alertas, ações rápidas e filas compactas antes de elementos mais analíticos.
+- Gráficos ficam ocultos no mobile para reduzir rolagem e evitar informação decorativa antes das prioridades.
+- Criadas filas compactas mobile para O.S. atrasadas, vencendo hoje e sem atualização.
+- Dashboard desktop recebeu grids mais fluidos para usar melhor 1366px, 1440px e 1920px sem concentrar tudo no centro.
+- Cards superiores, prioridades e colunas laterais receberam `min-w-0`, `w-full` e distribuição responsiva para reduzir espaços mortos e overflow.
+- Containers de Dashboard, Ordens, Intervenções, Notificações e Configurações foram reforçados como fluidos.
+- Topbar desktop recebeu proteções de largura e truncamento para zoom 80%, 90%, 100%, 110% e 125%.
+- Preferência existente de cards compactos do dashboard passa a afetar também blocos de prioridade/ações rápidas.
+- Sem migration nova.
+
+## V6.15.0 — UX Mobile Operacional: Ações Fixas, Notificações e Configurações
+
+- Adicionado rodapé fixo de ações principais no detalhe mobile da O.S., com Editar, Status/Reabrir e Mais, sem esconder conteúdo atrás da bottom navigation.
+- Adicionado rodapé fixo de ações principais no detalhe mobile da Intervenção, com Editar, Maps e Concluir/Status.
+- Detalhes de O.S. receberam cabeçalho operacional com número, status, prioridade, cliente, endereço, prazo e responsável em destaque.
+- Detalhe de Intervenção reorganizado com resumo operacional, pontos/Maps, lembretes configuráveis, mensagem original recolhível e metadados separados.
+- Central de Notificações ganhou chips mobile para Todas, Intervenções, Ordens, Sistema e Lidas.
+- Diagnóstico PWA/iOS foi recolhido na seção **Status do dispositivo**, evitando dominar a primeira dobra mobile.
+- Configurações reorganizadas em acordeões: Perfil, Aparência, Notificações, PWA / Dispositivo, Lembretes, Segurança e Sistema.
+- Menu mobile em bottom sheet preservado com grupos Operação, Gestão e Sistema, respeitando permissões por perfil.
+- Ajustes de acessibilidade, toque, safe area, contraste e padding inferior para uso como app no celular.
+- Sem migration nova.
+
+## V6.14.1 — Intervenções Mobile Compactas + Filtros em Bottom Sheet
+
+- Tela de **Intervenções** reorganizada no mobile para mostrar título, busca compacta, chips rápidos, botão **Filtrar** e início da lista muito mais cedo.
+- Filtros avançados no mobile movidos para bottom sheet com Tipo, Localidade, Status, Origem, Responsável, De e Até.
+- Criados chips rápidos horizontais roláveis: Todas, Hoje, Amanhã, Esta semana, Atrasadas, Concluídas e Canceladas, com contadores quando disponíveis.
+- Cards grandes de resumo foram substituídos no mobile por chips/cards pequenos horizontais para Hoje, Amanhã, Semana, Atrasadas e Concluídas.
+- Cards mobile de intervenção ficaram mais compactos, mantendo título, localidade, data/horário, status, pontos, origem e resumo de lembretes pendentes.
+- Botão **Nova intervenção** continua como ação flutuante no mobile, sem ocupar uma linha grande antes da lista.
+- Filtros aplicados agora aparecem em chips pequenos com remoção individual quando simples.
+- Desktop preservado com cards de resumo e filtros abertos.
+- Sem migration nova.
+
 ## V6.14.0 — Mobile Premium Final
 
 - Refinada a bottom navigation mobile com melhor safe area, altura, estado ativo e área de toque.
@@ -199,6 +251,19 @@
 
 # Changelog
 
+## V6.17.0 — Performance, Paginação e Busca
+
+- Intervenções passaram a usar paginação server-side com total, página atual, próxima/anterior e seletor de quantidade por página.
+- Busca de Intervenções foi movida para o banco, cobrindo título, localidade, tipo, origem, status, mensagem original e observações.
+- Usuários internos passaram a usar paginação server-side, busca por nome/e-mail/perfil e filtros por status, perfil e presença no banco.
+- Auditoria passou a usar paginação server-side, filtros por período, usuário, entidade, ação e busca textual por O.S., intervenção, entidade, ação, usuário e descrição.
+- Central de Notificações agora pagina a fila por filtro: Todas, Intervenções, Ordens, Sistema e Lidas.
+- Busca de Ordens foi ampliada para técnico principal, equipe de apoio, responsável interno, status, prioridade, cliente, descrição, endereço e número da O.S.
+- Criado componente reutilizável `PaginationFooter` para padronizar paginação desktop e mobile.
+- Filtros importantes permanecem na URL, preservando contexto ao atualizar, compartilhar link, voltar/avançar ou abrir detalhes.
+- Dashboard mantém consultas limitadas/agregadas e recebeu cache key atualizada para a versão.
+- Criada migration `database/20_performance_indexes.sql` com índices para filtros, prazos, busca textual, notificações, auditoria, usuários e atividades.
+
 ## V6.13.0 — Lembretes Configuráveis
 
 - Adicionada configuração individual de lembretes em intervenções.
@@ -311,6 +376,19 @@
 - mantém o fundo visual e a identidade sem excesso de informação
 
 # Changelog
+
+## V6.17.0 — Performance, Paginação e Busca
+
+- Intervenções passaram a usar paginação server-side com total, página atual, próxima/anterior e seletor de quantidade por página.
+- Busca de Intervenções foi movida para o banco, cobrindo título, localidade, tipo, origem, status, mensagem original e observações.
+- Usuários internos passaram a usar paginação server-side, busca por nome/e-mail/perfil e filtros por status, perfil e presença no banco.
+- Auditoria passou a usar paginação server-side, filtros por período, usuário, entidade, ação e busca textual por O.S., intervenção, entidade, ação, usuário e descrição.
+- Central de Notificações agora pagina a fila por filtro: Todas, Intervenções, Ordens, Sistema e Lidas.
+- Busca de Ordens foi ampliada para técnico principal, equipe de apoio, responsável interno, status, prioridade, cliente, descrição, endereço e número da O.S.
+- Criado componente reutilizável `PaginationFooter` para padronizar paginação desktop e mobile.
+- Filtros importantes permanecem na URL, preservando contexto ao atualizar, compartilhar link, voltar/avançar ou abrir detalhes.
+- Dashboard mantém consultas limitadas/agregadas e recebeu cache key atualizada para a versão.
+- Criada migration `database/20_performance_indexes.sql` com índices para filtros, prazos, busca textual, notificações, auditoria, usuários e atividades.
 
 ## V6.13.0 — Lembretes Configuráveis
 

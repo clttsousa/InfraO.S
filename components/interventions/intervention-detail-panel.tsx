@@ -73,13 +73,14 @@ export function InterventionDetailPanel({ intervention, internalUsers, action, o
 
   const currentAction = ["edit", "cancel", "conclude", "progress", "program"].includes(action ?? "") ? (action as Action) : undefined;
   const canOperate = !["CONCLUIDO", "CANCELADO"].includes(intervention.rawStatus);
+  const firstMapsUrl = intervention.points.find((point) => point.mapsUrl)?.mapsUrl;
 
   return (
-    <div className="space-y-5 p-5">
+    <div className="intervention-detail-mobile-content space-y-5 p-5">
       {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
       {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
 
-      <Surface className="p-5">
+      <Surface className="intervention-detail-hero p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -88,10 +89,12 @@ export function InterventionDetailPanel({ intervention, internalUsers, action, o
               <span className="badge-base badge-neutral">{intervention.source}</span>
             </div>
             <h2 className="app-title mt-3 text-2xl font-semibold leading-tight">{intervention.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{intervention.locationName} · {intervention.dateLabel} · {intervention.timeLabel}</p>
+            <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">{intervention.locationName}</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{intervention.dateLabel} · {intervention.timeLabel} · {intervention.points.length} ponto(s)</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="hidden flex-wrap gap-2 md:flex">
             <Button type="button" variant="secondary" onClick={() => onActionChange?.("edit")}><Edit3 className="h-4 w-4" />Editar</Button>
+            {firstMapsUrl ? <a href={firstMapsUrl} target="_blank" rel="noreferrer" className="btn-base btn-secondary btn-md"><ExternalLink className="h-4 w-4" />Abrir Maps</a> : null}
             {canOperate ? <Button type="button" variant="secondary" onClick={() => onActionChange?.("progress")}><PlayCircle className="h-4 w-4" />Acompanhar</Button> : null}
             {canOperate ? <Button type="button" onClick={() => onActionChange?.("conclude")}><CheckCircle2 className="h-4 w-4" />Concluir</Button> : null}
             {canOperate ? <Button type="button" variant="danger" onClick={() => onActionChange?.("cancel")}><Ban className="h-4 w-4" />Cancelar</Button> : null}
@@ -101,75 +104,94 @@ export function InterventionDetailPanel({ intervention, internalUsers, action, o
       </Surface>
 
       <Surface className="p-5">
-        <h3 className="app-title text-lg font-semibold">Informações da intervenção</h3>
+        <h3 className="app-title text-lg font-semibold">Resumo operacional</h3>
         <div className="mt-3 grid grid-cols-1 gap-x-6 md:grid-cols-2">
           <StatLine label="Tipo" value={intervention.type} />
           <StatLine label="Localidade" value={intervention.locationName} />
           <StatLine label="Início" value={intervention.startAt} />
           <StatLine label="Fim" value={intervention.endAt} />
           <StatLine label="Responsável" value={intervention.responsibleName} />
-          <StatLine label="Criado por" value={intervention.createdByName} />
-          <StatLine label="Criado em" value={intervention.createdAt} />
-          <StatLine label="Atualizado em" value={intervention.updatedAt} />
+          <StatLine label="Origem" value={intervention.source} />
         </div>
-        {intervention.notes ? <div className="app-surface-muted mt-3 rounded-[var(--radius-control)] p-3 text-sm leading-6 text-[var(--text-secondary)]">{intervention.notes}</div> : null}
       </Surface>
 
       <Surface className="p-5">
-        <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Pontos cadastrados</h3></div>
+        <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Pontos e Maps</h3></div>
         <div className="mt-4 space-y-3">
           {intervention.points.length === 0 ? <EmptyState compact title="Sem pontos" description="Adicione ao menos um ponto com link do Maps para facilitar a execução em campo." /> : intervention.points.map((point, index) => (
-            <div key={point.id} className="flex flex-col gap-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-3 md:flex-row md:items-center md:justify-between">
+            <div key={point.id} className="intervention-point-card flex flex-col gap-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-3 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <p className="font-semibold text-[var(--text-primary)]">{index + 1}. {point.label}</p>
                 <p className="truncate text-sm text-[var(--text-secondary)]">{point.mapsUrl || "Sem link informado"}</p>
               </div>
-              {point.mapsUrl ? <a href={point.mapsUrl} target="_blank" rel="noreferrer" className="btn-base btn-secondary btn-sm"><ExternalLink className="h-4 w-4" />Abrir no Maps</a> : null}
+              {point.mapsUrl ? <a href={point.mapsUrl} target="_blank" rel="noreferrer" className="btn-base btn-secondary btn-sm"><ExternalLink className="h-4 w-4" />Abrir Maps</a> : null}
             </div>
           ))}
         </div>
       </Surface>
 
+      <Surface className="p-5">
+        <details className="mobile-collapsible-section" open>
+          <summary className="mobile-collapsible-summary">
+            <span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" />Lembretes configuráveis</span>
+            <span className="text-xs text-[var(--text-tertiary)]">{intervention.reminders.length} item(ns)</span>
+          </summary>
+          {intervention.reminders.length === 0 ? (
+            <div className="mt-4"><EmptyState compact title="Sem lembretes" description="Configure lembretes na edição da intervenção para receber alertas internos e PWA." /></div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {intervention.reminders.map((reminder) => (
+                <div key={reminder.id} className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[var(--text-primary)]">{reminder.type}</p>
+                      <p className="mt-1 text-sm text-[var(--text-secondary)]">Programado para {reminder.remindAt}</p>
+                      {reminder.processedAt ? <p className="mt-1 text-xs text-[var(--text-secondary)]">Processado em {reminder.processedAt}</p> : null}
+                      {reminder.errorMessage ? <p className="mt-1 text-xs text-[var(--danger)]">{reminder.errorMessage}</p> : null}
+                    </div>
+                    <span className={`badge-base ${reminder.rawStatus === "processed" ? "badge-success" : reminder.rawStatus === "failed" ? "badge-danger" : reminder.rawStatus === "canceled" ? "badge-neutral" : "badge-primary"}`}>{reminder.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </details>
+      </Surface>
 
       <Surface className="p-5">
-        <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Lembretes</h3></div>
-        {intervention.reminders.length === 0 ? (
-          <EmptyState compact title="Sem lembretes" description="Configure lembretes na edição da intervenção para receber alertas internos e PWA." />
-        ) : (
-          <div className="mt-4 space-y-3">
-            {intervention.reminders.map((reminder) => (
-              <div key={reminder.id} className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[var(--text-primary)]">{reminder.type}</p>
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">Programado para {reminder.remindAt}</p>
-                    {reminder.processedAt ? <p className="mt-1 text-xs text-[var(--text-secondary)]">Processado em {reminder.processedAt}</p> : null}
-                    {reminder.errorMessage ? <p className="mt-1 text-xs text-[var(--danger)]">{reminder.errorMessage}</p> : null}
-                  </div>
-                  <span className={`badge-base ${reminder.rawStatus === "processed" ? "badge-success" : reminder.rawStatus === "failed" ? "badge-danger" : reminder.rawStatus === "canceled" ? "badge-neutral" : "badge-primary"}`}>{reminder.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <details className="mobile-collapsible-section">
+          <summary className="mobile-collapsible-summary">
+            <span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" />Mensagem original e observações</span>
+            <span className="text-xs text-[var(--text-tertiary)]">toque para abrir</span>
+          </summary>
+          {intervention.notes ? <div className="app-surface-muted mt-4 rounded-[var(--radius-control)] p-3 text-sm leading-6 text-[var(--text-secondary)]">{intervention.notes}</div> : null}
+          {intervention.originalMessage ? (
+            <pre className="mt-4 whitespace-pre-wrap rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--text-secondary)]">{intervention.originalMessage}</pre>
+          ) : (
+            <div className="mt-4"><EmptyState compact title="Sem mensagem original" description="A intervenção foi cadastrada manualmente ou sem colar a mensagem recebida." /></div>
+          )}
+        </details>
       </Surface>
 
-      <Surface className="intervention-original-message p-5">
-        {intervention.originalMessage ? (
-          <details className="mobile-collapsible-section" open>
-            <summary className="mobile-collapsible-summary">
-              <span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" />Mensagem original</span>
-              <span className="text-xs text-[var(--text-tertiary)]">toque para expandir/recolher</span>
-            </summary>
-            <pre className="mt-4 whitespace-pre-wrap rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--text-secondary)]">{intervention.originalMessage}</pre>
-          </details>
-        ) : (
-          <div>
-            <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Mensagem original</h3></div>
-            <EmptyState compact title="Sem mensagem original" description="A intervenção foi cadastrada manualmente ou sem colar a mensagem recebida." />
+      <Surface className="p-5">
+        <details className="mobile-collapsible-section">
+          <summary className="mobile-collapsible-summary">
+            <span>Metadados da intervenção</span>
+            <span className="text-xs text-[var(--text-tertiary)]">auditoria básica</span>
+          </summary>
+          <div className="mt-3 grid grid-cols-1 gap-x-6 md:grid-cols-2">
+            <StatLine label="Criado por" value={intervention.createdByName} />
+            <StatLine label="Criado em" value={intervention.createdAt} />
+            <StatLine label="Atualizado em" value={intervention.updatedAt} />
           </div>
-        )}
+        </details>
       </Surface>
+
+      <div className="mobile-detail-action-bar md:hidden" role="toolbar" aria-label="Ações rápidas da intervenção">
+        <Button type="button" variant="secondary" onClick={() => onActionChange?.("edit")}><Edit3 className="h-4 w-4" />Editar</Button>
+        {firstMapsUrl ? <a href={firstMapsUrl} target="_blank" rel="noreferrer" className="btn-base btn-secondary btn-md"><ExternalLink className="h-4 w-4" />Maps</a> : null}
+        {canOperate ? <Button type="button" onClick={() => onActionChange?.("conclude")}><CheckCircle2 className="h-4 w-4" />Concluir</Button> : <Button type="button" variant="secondary" onClick={() => onActionChange?.("program")}><RotateCcw className="h-4 w-4" />Status</Button>}
+      </div>
 
       <OrderActionOverlay isOpen={Boolean(currentAction)} closeHref={baseHref} onClose={() => onActionChange?.(undefined)}>
         <div className="app-panel animate-scaleIn relative z-[73] w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)]">

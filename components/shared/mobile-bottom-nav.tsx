@@ -167,16 +167,15 @@ export function MobileBottomNav({ user }: { user: SessionUser }) {
                         </Link>
                       );
                     })}
+                    {group.title === "Sistema" ? (
+                      <button type="button" onClick={handleLogout} disabled={pending} className="mobile-menu-link mobile-menu-logout-inline">
+                        <LogOut className="h-5 w-5" />
+                        <span>{pending ? "Saindo..." : "Sair do InfraOS"}</span>
+                      </button>
+                    ) : null}
                   </nav>
                 </section>
               ))}
-            </div>
-
-            <div className="mobile-menu-actions">
-              <button type="button" onClick={handleLogout} disabled={pending} className="mobile-menu-logout">
-                <LogOut className="h-5 w-5" />
-                <span>{pending ? "Saindo..." : "Sair do InfraOS"}</span>
-              </button>
             </div>
           </section>
         </div>

@@ -161,9 +161,10 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
         dueToday,
         stale,
         interventions,
-        recentActivities: summaryState.counts.recentActivities
+        recentActivities: summaryState.counts.recentActivities,
+        read: summaryState.counts.read
       },
-      items: summaryState.items.filter((item) => item.category === 'activity' || !acknowledgedSet.has(item.id))
+      items: summaryState.items.filter((item) => item.category === 'activity' || (!item.read && !acknowledgedSet.has(item.id)))
     };
   }, [acknowledgedSet, summaryState]);
 

@@ -1,21 +1,75 @@
-# InfraOS v6.14.0
+# InfraOS v6.17.0
 
 Painel interno para operação de ordens de serviço, intervenções programadas, lembretes configuráveis, notificações e auditoria.
 
 ## O que entrou nesta versão
-- pente fino mobile final com foco em operação no celular;
-- bottom navigation mais premium, com safe area, toque confortável e estados ativos mais claros;
-- menu mobile reorganizado por grupos: Operação, Gestão e Sistema;
-- topbar mobile mais compacta e sem ações duplicadas;
-- dashboard mobile com bloco **Prioridade operacional**;
-- cards superiores do dashboard em carrossel horizontal no mobile;
-- cards de O.S. e intervenções mais compactos e legíveis;
-- filtros de ordens mais adequados ao celular;
-- drawer/sheet de detalhes com visual mais próximo de app;
-- mensagem original da intervenção recolhível no mobile;
-- notificações agrupadas por Intervenções, Ordens/alertas e Movimentações;
-- ajustes em inputs, botões, formulários, login e áreas de toque;
-- sem migration nova.
+- paginação server-side revisada/implementada em Ordens, Intervenções, Notificações, Usuários e Auditoria;
+- busca movida para o banco quando possível, evitando filtrar listas grandes apenas no cliente;
+- filtros importantes preservados na URL para atualizar, compartilhar link e abrir detalhes sem perder contexto;
+- central de Notificações paginada por categoria: Todas, Intervenções, Ordens, Sistema e Lidas;
+- Auditoria preparada para crescer com paginação, filtros por período/usuário/entidade/ação e busca textual;
+- Usuários internos com busca/filtros/paginação no servidor;
+- Intervenções com total de registros, página atual, próxima/anterior e seletor de itens por página;
+- componente reutilizável `PaginationFooter` para desktop/mobile;
+- migration `database/20_performance_indexes.sql` com índices de performance e busca.
+
+## V6.17.0 — Performance, Paginação e Busca
+
+Esta versão prepara o InfraOS para crescimento real de dados. As listagens principais deixam de depender de grandes arrays filtrados no cliente e passam a trabalhar com paginação, filtros por URL e consultas mais objetivas no servidor.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local compilou e passou TypeScript, mas o ambiente encerrou novamente em `Collecting page data` com `EPIPE`, comportamento já observado nas versões anteriores; validar também na Vercel/ambiente real.
+
+Migration nova:
+
+```text
+database/20_performance_indexes.sql
+```
+
+## V6.16.0 — Dashboard Operacional + Melhor Uso de Tela Larga
+
+Esta versão torna o Dashboard mais útil para operação diária. A primeira leitura agora responde **o que precisa de atenção agora**, com prioridade operacional no topo, atalhos clicáveis para filas relacionadas e melhor aproveitamento do espaço em telas Windows de 1366px, 1440px e 1920px.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local deve ser validado também na Vercel/ambiente real, mantendo a observação das versões anteriores sobre encerramento em `Collecting page data` em alguns ambientes locais.
+
+## V6.15.0 — UX Mobile Operacional: Ações Fixas, Notificações e Configurações
+
+Esta versão melhora o uso do InfraOS no celular como app operacional. Detalhes de O.S. e Intervenção passam a ter ações fixas no rodapé do sheet mobile, a central de notificações fica mais limpa e filtrável, e Configurações deixa de virar uma tela longa demais no celular.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local compilou e passou TypeScript, mas o ambiente encerrou em `Collecting page data` com `EPIPE`, comportamento já observado em versões anteriores; validar também na Vercel/ambiente real.
+
+## V6.14.1 — Intervenções Mobile Compactas + Filtros em Bottom Sheet
+
+Esta versão resolve o excesso de altura da tela de Intervenções no celular. A primeira dobra agora prioriza operação rápida: título, busca, filtros rápidos, botão **Filtrar** e início da lista de intervenções. Os filtros detalhados continuam disponíveis, mas dentro de uma bottom sheet mobile.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local compilou e passou TypeScript, mas o ambiente encerrou em `Collecting page data` por timeout/EPIPE; validar também na Vercel/ambiente real.
 
 ## V6.14.0 — Mobile Premium Final
 
@@ -459,6 +513,51 @@ Teste manual:
 - troque senhas provisórias
 - faça backup antes de upgrades
 - rode `npm run build` antes de publicar
+
+
+
+## V6.17.0 — Performance, Paginação e Busca
+
+A versão V6.17.0 prepara o InfraOS para crescimento real de dados, reduzindo carregamento de listas inteiras no cliente e movendo filtros/pesquisas para consultas paginadas no servidor.
+
+### O que mudou
+
+- **Ordens**: preservada e refinada a paginação server-side existente, com busca ampliada para número da O.S., cliente, descrição, endereço/localidade, técnico, responsável interno, status e prioridade.
+- **Intervenções**: listagem agora usa paginação server-side com `limit/offset`, total de registros, página atual, próxima/anterior e seletor de quantidade por página.
+- **Notificações**: central completa passou a carregar a fila por página/filtro, evitando buscar todo o histórico de uma vez. O popover continua limitado aos itens recentes.
+- **Usuários**: gestão administrativa passou a usar busca/filtros no banco, paginação e resumo separado da página atual.
+- **Auditoria**: eventos agora são paginados no servidor, com busca por O.S./intervenção, entidade, ação, usuário, descrição e filtros por período, entidade, ação e usuário.
+- **URLs com contexto**: filtros importantes permanecem na URL para atualizar a página, compartilhar links, voltar/avançar no navegador e abrir detalhes preservando o contexto.
+- **Componente reutilizável**: criado `PaginationFooter` para padronizar paginação desktop/mobile.
+
+### Migration de performance
+
+Execute após `database/19_configurable_reminders.sql`:
+
+```sql
+\i database/20_performance_indexes.sql
+```
+
+No Neon/Supabase SQL Editor, cole e execute o conteúdo do arquivo:
+
+```text
+database/20_performance_indexes.sql
+```
+
+A migration cria índices para filtros operacionais, datas/prazos, status, responsáveis, notificações, lembretes, auditoria, usuários e busca textual com `pg_trgm`.
+
+### Testes recomendados
+
+1. Aplicar `database/20_performance_indexes.sql` em um banco de teste ou homologação.
+2. Rodar `npm ci --ignore-scripts`.
+3. Rodar `npm run typecheck`.
+4. Abrir **Ordens**, pesquisar por número, cliente, descrição, localidade, técnico e status.
+5. Validar paginação de Ordens com filtros ativos e abrir drawer mantendo URL/contexto.
+6. Abrir **Intervenções**, testar busca, chips rápidos, filtros avançados e paginação.
+7. Abrir **Usuários** como admin, filtrar por status, perfil, presença e trocar quantidade por página.
+8. Abrir **Auditoria**, combinar período + usuário + entidade + ação + busca textual e paginar.
+9. Abrir **Notificações**, alternar entre Todas, Intervenções, Ordens, Sistema e Lidas, usando paginação.
+10. Testar no mobile se os controles não ocupam espaço excessivo e se a lista não renderiza itens demais.
 
 
 ## V6.13.0 — Lembretes Configuráveis

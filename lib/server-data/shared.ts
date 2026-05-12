@@ -229,7 +229,28 @@ export function buildOrderFilters(filters: OrderFilters) {
     where.push(`(
       so.order_number ilike $${index}
       or coalesce(so.client_name, '') ilike $${index}
+      or coalesce(so.client_code, '') ilike $${index}
       or coalesce(so.opening_description, '') ilike $${index}
+      or coalesce(so.address_text, '') ilike $${index}
+      or coalesce(so.opened_by, '') ilike $${index}
+      or so.status::text ilike $${index}
+      or so.priority::text ilike $${index}
+      or exists (
+        select 1
+        from technicians tq
+        where tq.id = so.technician_id and tq.full_name ilike $${index}
+      )
+      or exists (
+        select 1
+        from service_order_technicians sotq
+        join technicians stq on stq.id = sotq.technician_id
+        where sotq.service_order_id = so.id and stq.full_name ilike $${index}
+      )
+      or exists (
+        select 1
+        from internal_users iuq
+        where iuq.id = so.internal_owner_id and iuq.full_name ilike $${index}
+      )
     )`);
   }
 

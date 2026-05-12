@@ -38,6 +38,8 @@ type InterventionRow = {
   updated_at: string;
   reminder_config: unknown;
   points_count: string | number;
+  reminders_count: string | number;
+  next_reminder_at: string | null;
   is_late: boolean;
 };
 
@@ -61,6 +63,19 @@ type InterventionReminderRow = {
 const typeValues = new Set<string>(INTERVENTION_TYPE_OPTIONS.map((item) => item.value));
 const statusValues = new Set<string>(INTERVENTION_STATUS_OPTIONS.map((item) => item.value));
 const sourceValues = new Set<string>(INTERVENTION_SOURCE_OPTIONS.map((item) => item.value));
+
+const INTERVENTION_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const DEFAULT_INTERVENTION_PAGE_SIZE = 20;
+
+function getPositiveInt(value: string | number | undefined, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function sanitizeInterventionPageSize(value: string | number | undefined) {
+  const parsed = getPositiveInt(value, DEFAULT_INTERVENTION_PAGE_SIZE);
+  return INTERVENTION_PAGE_SIZE_OPTIONS.includes(parsed as (typeof INTERVENTION_PAGE_SIZE_OPTIONS)[number]) ? parsed : DEFAULT_INTERVENTION_PAGE_SIZE;
+}
 
 function normalizeQuickFilter(value?: string): InterventionQuickFilter {
   if (["today", "tomorrow", "week", "late", "concluded", "canceled"].includes(value ?? "")) {
@@ -120,7 +135,7 @@ function buildInterventionFilters(filters: InterventionFilters) {
 
   if (filters.q) {
     const param = addParam(`%${filters.q.trim()}%`);
-    clauses.push(`(ie.title ilike ${param} or ie.location_name ilike ${param} or ie.original_message ilike ${param} or ie.notes ilike ${param})`);
+    clauses.push(`(ie.title ilike ${param} or ie.location_name ilike ${param} or ie.type::text ilike ${param} or ie.source::text ilike ${param} or ie.status::text ilike ${param} or coalesce(ie.original_message, '') ilike ${param} or coalesce(ie.notes, '') ilike ${param})`);
   }
 
   if (filters.type && typeValues.has(filters.type)) {
@@ -201,6 +216,8 @@ const baseInterventionSelect = `
     ie.updated_at,
     ie.reminder_config,
     coalesce(point_counts.points_count, 0)::text as points_count,
+    coalesce(reminder_counts.reminders_count, 0)::text as reminders_count,
+    reminder_counts.next_reminder_at::text as next_reminder_at,
     (ie.status = 'ATRASADO' or (ie.status not in ('CONCLUIDO', 'CANCELADO') and ie.end_at < now())) as is_late
   from infra_events ie
   left join internal_users creator on creator.id = ie.created_by
@@ -210,6 +227,13 @@ const baseInterventionSelect = `
     from infra_event_points iep
     where iep.event_id = ie.id
   ) point_counts on true
+  left join lateral (
+    select
+      count(*) filter (where r.status = 'pending') as reminders_count,
+      min(r.remind_at) filter (where r.status = 'pending') as next_reminder_at
+    from reminders r
+    where r.event_id = ie.id
+  ) reminder_counts on true
 `;
 
 export function parseInterventionFilters(params: Record<string, string | string[] | undefined>): InterventionFilters {
@@ -227,7 +251,9 @@ export function parseInterventionFilters(params: Record<string, string | string[
     source: get("source"),
     responsibleId: get("responsible"),
     from: get("from"),
-    to: get("to")
+    to: get("to"),
+    page: getPositiveInt(get("page"), 1),
+    pageSize: sanitizeInterventionPageSize(get("pageSize"))
   };
 }
 
@@ -242,6 +268,8 @@ export function buildInterventionsQuery(filters: InterventionFilters) {
   if (filters.responsibleId) params.set("responsible", filters.responsibleId);
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
+  if (filters.page && filters.page > 1) params.set("page", String(filters.page));
+  if (filters.pageSize && filters.pageSize !== DEFAULT_INTERVENTION_PAGE_SIZE) params.set("pageSize", String(sanitizeInterventionPageSize(filters.pageSize)));
   return params;
 }
 
@@ -270,7 +298,9 @@ function mapInterventionRow(row: InterventionRow): InterventionItem {
     notes: row.notes,
     isLate,
     createdAt: formatDateTime(row.created_at),
-    updatedAt: formatDateTime(row.updated_at)
+    updatedAt: formatDateTime(row.updated_at),
+    remindersCount: Number(row.reminders_count ?? 0),
+    nextReminderAt: row.next_reminder_at ? formatDateTime(row.next_reminder_at) : null
   };
 }
 
@@ -300,14 +330,17 @@ function mapReminderRow(row: InterventionReminderRow): InterventionReminderItem 
 
 export async function getInterventionsPageData(filters: InterventionFilters): Promise<InterventionListResult> {
   const built = buildInterventionFilters(filters);
+  const pageSize = sanitizeInterventionPageSize(filters.pageSize);
+  const requestedPage = getPositiveInt(filters.page, 1);
 
-  const [summaryResult, listResult] = await Promise.all([
+  const [summaryResult, countResult] = await Promise.all([
     query<{
       today: string;
       tomorrow: string;
       week: string;
       late: string;
       concluded: string;
+      canceled: string;
     }>(
       `
         select
@@ -315,24 +348,39 @@ export async function getInterventionsPageData(filters: InterventionFilters): Pr
           count(*) filter (where (start_at at time zone '${APP_TIME_ZONE}')::date = ((now() at time zone '${APP_TIME_ZONE}')::date + interval '1 day')::date)::text as tomorrow,
           count(*) filter (where start_at >= ((now() at time zone '${APP_TIME_ZONE}')::date at time zone '${APP_TIME_ZONE}') and start_at < (((now() at time zone '${APP_TIME_ZONE}')::date + interval '7 day') at time zone '${APP_TIME_ZONE}'))::text as week,
           count(*) filter (where status not in ('CONCLUIDO', 'CANCELADO') and (status = 'ATRASADO' or end_at < now()))::text as late,
-          count(*) filter (where status = 'CONCLUIDO')::text as concluded
+          count(*) filter (where status = 'CONCLUIDO')::text as concluded,
+          count(*) filter (where status = 'CANCELADO')::text as canceled
         from infra_events
         where archived_at is null
       `
     ),
-    query<InterventionRow>(
+    query<{ total: string }>(
       `
-        ${baseInterventionSelect}
+        select count(*)::text as total
+        from infra_events ie
         ${built.clause}
-        order by
-          case when ie.status not in ('CONCLUIDO', 'CANCELADO') then 0 else 1 end,
-          ie.start_at asc,
-          ie.updated_at desc
-        limit 200
       `,
       built.params
     )
   ]);
+
+  const total = Number(countResult.rows[0]?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const offset = (page - 1) * pageSize;
+
+  const listResult = await query<InterventionRow>(
+    `
+      ${baseInterventionSelect}
+      ${built.clause}
+      order by
+        case when ie.status not in ('CONCLUIDO', 'CANCELADO') then 0 else 1 end,
+        ie.start_at asc,
+        ie.updated_at desc
+      limit $${built.params.length + 1} offset $${built.params.length + 2}
+    `,
+    [...built.params, pageSize, offset]
+  );
 
   const summaryRow = summaryResult.rows[0];
   const summary: InterventionSummary = {
@@ -340,12 +388,17 @@ export async function getInterventionsPageData(filters: InterventionFilters): Pr
     tomorrow: Number(summaryRow?.tomorrow ?? 0),
     week: Number(summaryRow?.week ?? 0),
     late: Number(summaryRow?.late ?? 0),
-    concluded: Number(summaryRow?.concluded ?? 0)
+    concluded: Number(summaryRow?.concluded ?? 0),
+    canceled: Number(summaryRow?.canceled ?? 0)
   };
 
   return {
     items: listResult.rows.map(mapInterventionRow),
-    summary
+    summary,
+    total,
+    page,
+    pageSize,
+    totalPages
   };
 }
 

@@ -12,7 +12,7 @@ function getRowClass(order: ServiceOrderItem) {
 
 export function DashboardTable({ title, description, orders, href }: { title: string; description: string; orders: ServiceOrderItem[]; href?: string }) {
   return (
-    <Surface className="animate-slideInUp">
+    <Surface className="dashboard-table-surface animate-slideInUp">
       <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
         <div>
           <h3 className="app-title text-lg font-semibold">{title}</h3>

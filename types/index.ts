@@ -77,6 +77,8 @@ export type InterventionItem = {
   isLate: boolean;
   createdAt: string;
   updatedAt: string;
+  remindersCount?: number;
+  nextReminderAt?: string | null;
 };
 
 export type InterventionDetail = InterventionItem & {
@@ -95,11 +97,16 @@ export type InterventionSummary = {
   week: number;
   late: number;
   concluded: number;
+  canceled: number;
 };
 
 export type InterventionListResult = {
   items: InterventionItem[];
   summary: InterventionSummary;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 export type InterventionFilters = {
@@ -112,6 +119,33 @@ export type InterventionFilters = {
   responsibleId?: string;
   from?: string;
   to?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type InternalUserFilters = {
+  q?: string;
+  accountStatus?: "all" | "active" | "inactive";
+  role?: "all" | UserRole;
+  presence?: "all" | PresenceStatus;
+  page?: number;
+  pageSize?: number;
+};
+
+export type InternalUsersListResult = {
+  items: InternalUserItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  summary: {
+    total: number;
+    active: number;
+    admins: number;
+    inactive: number;
+    online: number;
+    away: number;
+  };
 };
 
 export type PresenceStatus = "ONLINE" | "AUSENTE" | "OFFLINE";
@@ -304,6 +338,16 @@ export type DashboardData = {
     tomorrow: number;
     late: number;
   };
+  operationalSummary: {
+    overdueOrders: number;
+    dueTodayOrders: number;
+    staleOrders: number;
+    todayInterventions: number;
+    tomorrowInterventions: number;
+    lateInterventions: number;
+    criticalNotifications: number;
+    pendingReminders: number;
+  };
 };
 
 export type DashboardInterventionItem = {
@@ -400,8 +444,11 @@ export type NotificationItem = {
   href: string;
   level: NotificationLevel;
   when?: string;
+  read?: boolean;
   category: "late" | "dueToday" | "stale" | "activity" | "intervention";
 };
+
+export type NotificationFeedFilter = "all" | "interventions" | "orders" | "system" | "read";
 
 export type NotificationSummary = {
   total: number;
@@ -411,6 +458,7 @@ export type NotificationSummary = {
     stale: number;
     recentActivities: number;
     interventions: number;
+    read: number;
   };
   items: NotificationItem[];
   activeAlertIds: {
@@ -420,6 +468,35 @@ export type NotificationSummary = {
     intervention: string[];
   };
   checkedAt: string;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  itemsTotal: number;
+  filter: NotificationFeedFilter;
+};
+
+export type AuditEventsFilters = {
+  q?: string;
+  actorUserId?: string;
+  actionType?: string;
+  entityType?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+};
+
+export type AuditEventsListResult = {
+  items: AuditEventItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  summary: {
+    today: number;
+    uniqueActors: number;
+  };
 };
 
 export type SavedOrderView = {

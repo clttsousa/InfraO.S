@@ -272,7 +272,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <div className="min-w-0">
+      <div className="orders-page app-content-fluid min-w-0">
         <div className="space-y-3.5 p-4 md:p-5">
           <Breadcrumbs items={[{ label: "Ordens" }]} showHome />
           {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}

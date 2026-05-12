@@ -23,6 +23,10 @@ type DashboardInterventionSummaryRow = {
   late: string;
 };
 
+type DashboardCountRow = {
+  total: string;
+};
+
 function toInterventionTimeLabel(startAt: string, endAt: string) {
   const formatter = new Intl.DateTimeFormat("pt-BR", {
     timeZone: APP_TIME_ZONE,
@@ -33,7 +37,7 @@ function toInterventionTimeLabel(startAt: string, endAt: string) {
 }
 
 async function getDashboardDataUncached(): Promise<DashboardData> {
-  const [statsResult, dueTodayResult, overdueResult, staleResult, activitiesResult, techSummaryResult, interventionsResult, interventionSummaryResult] = await Promise.all([
+  const [statsResult, dueTodayResult, overdueResult, staleResult, activitiesResult, techSummaryResult, interventionsResult, interventionSummaryResult, dueTodayCountResult, staleCountResult, pendingRemindersResult] = await Promise.all([
     query<DashboardStatRow>(`
       select
         count(*) filter (where status = 'ABERTA')::text as abertas,
@@ -130,6 +134,28 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
         count(*) filter (where status not in ('CONCLUIDO', 'CANCELADO') and (status = 'ATRASADO' or end_at < now()))::text as late
       from infra_events
       where archived_at is null
+    `),
+    query<DashboardCountRow>(`
+      select count(*)::text as total
+      from service_orders
+      where deadline_at is not null
+        and status not in ('FINALIZADA', 'CANCELADA')
+        and deadline_at >= now()
+        and (deadline_at at time zone '${APP_TIME_ZONE}')::date = (now() at time zone '${APP_TIME_ZONE}')::date
+    `),
+    query<DashboardCountRow>(`
+      select count(*)::text as total
+      from service_orders
+      where updated_at < now() - interval '24 hours'
+        and status not in ('FINALIZADA', 'CANCELADA')
+    `),
+    query<DashboardCountRow>(`
+      select count(*)::text as total
+      from reminders r
+      join infra_events ie on ie.id = r.event_id
+      where r.status = 'pending'
+        and ie.archived_at is null
+        and ie.status not in ('CONCLUIDO', 'CANCELADO')
     `)
   ]);
 
@@ -188,11 +214,21 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
       today: Number(interventionSummaryRow.today ?? 0),
       tomorrow: Number(interventionSummaryRow.tomorrow ?? 0),
       late: Number(interventionSummaryRow.late ?? 0)
+    },
+    operationalSummary: {
+      overdueOrders: Number(stats.atrasadas ?? 0),
+      dueTodayOrders: Number(dueTodayCountResult.rows[0]?.total ?? dueTodayResult.rows.length),
+      staleOrders: Number(staleCountResult.rows[0]?.total ?? staleResult.rows.length),
+      todayInterventions: Number(interventionSummaryRow.today ?? 0),
+      tomorrowInterventions: Number(interventionSummaryRow.tomorrow ?? 0),
+      lateInterventions: Number(interventionSummaryRow.late ?? 0),
+      criticalNotifications: Number(stats.atrasadas ?? 0) + Number(interventionSummaryRow.late ?? 0),
+      pendingReminders: Number(pendingRemindersResult.rows[0]?.total ?? 0)
     }
   };
 }
 
-const getDashboardDataCached = unstable_cache(getDashboardDataUncached, ["dashboard-data-v6.8"], { revalidate: 60, tags: ["dashboard"] });
+const getDashboardDataCached = unstable_cache(getDashboardDataUncached, ["dashboard-data-v6.17"], { revalidate: 60, tags: ["dashboard"] });
 
 export async function getDashboardData(): Promise<DashboardData> {
   return getDashboardDataCached();

@@ -239,7 +239,7 @@ export function InterventionWorkspaceClient({ baseQueryString, items, internalUs
   return (
     <>
       <div className="intervention-action-row flex justify-end">
-        <Button type="button" onClick={openNew}><Plus className="h-4 w-4" />Nova intervenção</Button>
+        <Button type="button" onClick={openNew} className="intervention-new-button"><Plus className="h-4 w-4" /><span>Nova</span><span className="hidden sm:inline"> intervenção</span></Button>
       </div>
       <InterventionList items={interventions} selectedId={selectedId} pulseId={pulseId} onSelect={openIntervention} />
 

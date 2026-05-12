@@ -125,27 +125,38 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
   const canFinishOrCancel = order.rawStatus !== "FINALIZADA" && order.rawStatus !== "CANCELADA";
 
   return (
-    <div className="relative space-y-6 p-6 animate-fadeIn">
+    <div className="order-detail-mobile-content relative space-y-5 p-6 animate-fadeIn">
       {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
       {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
 
-      <div>
-        <p className="app-eyebrow text-xs font-medium">Detalhe da O.S.</p>
-        <h2 className="app-title mt-1 text-[1.9rem] font-semibold leading-tight">O.S. {order.number}</h2>
-        <p className="app-text-secondary mt-1">Cliente: {order.clientName ?? "Sem cliente vinculado"}</p>
-      </div>
+      <Surface className="order-detail-hero p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <p className="app-eyebrow text-xs font-medium">Detalhe da O.S.</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <h2 className="app-title text-[1.9rem] font-semibold leading-tight">O.S. {order.number}</h2>
+              <StatusBadge status={order.status} />
+              <PriorityBadge priority={order.priority} />
+            </div>
+            <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">{order.clientName ?? "Sem cliente vinculado"}</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{order.address ?? "Endereço não informado"}</p>
+          </div>
+          <div className="grid min-w-[12rem] grid-cols-1 gap-2 text-sm text-[var(--text-secondary)]">
+            <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2"><span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Prazo</span><strong className="text-[var(--text-primary)]">{order.deadline}</strong></div>
+            <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2"><span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Responsável</span><strong className="text-[var(--text-primary)]">{order.assignedTechnician}</strong></div>
+          </div>
+        </div>
+      </Surface>
 
       {order.isLate ? <div className="alert-danger"><TriangleAlert className="h-4 w-4" />Prazo vencido. Esta O.S. está atrasada, mas o status real continua <span className="font-semibold">{order.rawStatus}</span>.</div> : null}
       {!order.isLate && order.isDueToday ? <div className="alert-warning">Atenção: esta O.S. vence hoje e ainda não foi encerrada.</div> : null}
       {order.isStale ? <div className="alert-neutral">Sem atualização recente nas últimas 24 horas.</div> : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={order.status} />
-        <PriorityBadge priority={order.priority} />
+      <div className="hidden flex-wrap items-center gap-2 md:flex">
         {order.locationLink ? <a href={order.locationLink} target="_blank" rel="noreferrer" className="btn-base btn-ghost btn-md app-link px-3"><MapPin className="h-4 w-4" />Ver localização</a> : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="hidden flex-wrap gap-2 md:flex">
         <Button type="button" variant="secondary" onClick={() => onActionChange?.("edit")}><Pencil className="h-4 w-4" />Editar O.S.</Button>
         {!canReopen ? <Button type="button" variant="secondary" onClick={() => onActionChange?.("status")}><RefreshCw className="h-4 w-4" />Alterar status</Button> : null}
         <Button type="button" variant="secondary" onClick={() => onActionChange?.("note")}><MessageSquare className="h-4 w-4" />Adicionar observação</Button>
@@ -224,6 +235,12 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
           </div>
         ) : null}
       </Surface>
+
+      <div className="mobile-detail-action-bar md:hidden" role="toolbar" aria-label="Ações rápidas da O.S.">
+        <Button type="button" variant="secondary" onClick={() => onActionChange?.("edit")}><Pencil className="h-4 w-4" />Editar</Button>
+        {canReopen ? <Button type="button" variant="secondary" onClick={() => onActionChange?.("reopen")}><RotateCcw className="h-4 w-4" />Reabrir</Button> : <Button type="button" onClick={() => onActionChange?.("status")}><RefreshCw className="h-4 w-4" />Status</Button>}
+        <Button type="button" variant="secondary" onClick={() => onActionChange?.("note")}><MessageSquare className="h-4 w-4" />Mais</Button>
+      </div>
 
       <OrderActionOverlay isOpen={Boolean(action)} closeHref={closeHref} onClose={closeAction}>
         <div className="app-panel animate-scaleIn relative z-[73] w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[var(--radius-modal)] p-5 shadow-[var(--shadow-lg)]">
