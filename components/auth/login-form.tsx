@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { Button, FeedbackMessage, Surface } from "@/components/shared/ui";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { useNotifications } from "@/components/providers/notification-provider";
@@ -79,22 +79,24 @@ export function LoginForm() {
   }
 
   return (
-    <Surface className="login-clean-card w-full overflow-hidden p-5 shadow-[var(--shadow-md)] md:p-7">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="login-mobile-badge">Acesso interno</div>
-          <BrandLogo size="md" subtitle="Painel interno" />
-          <h2 className="app-title mt-5 text-[1.85rem] font-semibold tracking-[-0.04em] md:text-[2.15rem]">Entrar no InfraOS</h2>
-          <p className="app-text-secondary mt-2 max-w-md text-sm leading-6">
-            Acesse o painel operacional com sua conta autorizada.
-          </p>
-        </div>
+    <Surface className="login-premium-card w-full overflow-hidden p-5 shadow-[var(--shadow-md)] md:p-8">
+      <div className="login-theme-control" aria-label="Alternar tema">
         <ThemeToggle />
       </div>
 
-      <div className="login-inline-note mt-5">
+      <header className="login-premium-header text-center">
+        <div className="mx-auto flex justify-center">
+          <BrandLogo size="lg" subtitle="Painel interno" className="justify-center" />
+        </div>
+        <h2 className="app-title mt-6 text-[2rem] font-semibold tracking-[-0.045em] md:text-[2.35rem]">Entrar no InfraOS</h2>
+        <p className="mx-auto mt-2 max-w-[22rem] text-sm leading-6 text-[var(--text-secondary)]">
+          Acesse o painel operacional com sua conta autorizada.
+        </p>
+      </header>
+
+      <div className="login-security-line mt-6">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--primary)]" />
-        <span>Acesso nominal e auditado por perfil.</span>
+        <span>Acesso nominal, restrito e auditado por perfil.</span>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -146,14 +148,15 @@ export function LoginForm() {
           </FeedbackMessage>
         ) : null}
 
-        <Button type="submit" className="login-submit-button mt-2 w-full" loading={isSubmitting}>
-          {isSubmitting ? "Entrando..." : "Entrar no painel"}
+        <Button type="submit" className="login-submit-button mt-2 w-full justify-center" loading={isSubmitting}>
+          <span>{isSubmitting ? "Entrando..." : "Entrar no painel"}</span>
+          {!isSubmitting ? <ArrowRight className="h-4 w-4" /> : null}
         </Button>
       </form>
 
-      <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/45 px-3.5 py-3 text-xs leading-5 text-[var(--text-tertiary)]">
-        Problemas para acessar? Solicite liberação ou redefinição ao administrador do InfraOS.
-      </div>
+      <p className="mt-5 text-center text-xs leading-5 text-[var(--text-tertiary)]">
+        Problemas para acessar? Solicite liberação ou redefinição ao administrador.
+      </p>
     </Surface>
   );
 }

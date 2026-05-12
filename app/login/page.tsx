@@ -13,10 +13,11 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   const envCheck = getPublicRuntimeChecks();
 
   return (
-    <main className="app-shell-bg login-clean-page min-h-screen overflow-hidden px-4 py-5 md:px-6 md:py-8">
-      <div className="login-clean-glow login-clean-glow-primary" aria-hidden="true" />
-      <div className="login-clean-glow login-clean-glow-secondary" aria-hidden="true" />
-      <section className="relative z-[1] mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-[31rem] flex-col justify-center gap-4">
+    <main className="login-premium-page min-h-dvh overflow-hidden px-4 py-5 md:px-6 md:py-8">
+      <div className="login-premium-grid" aria-hidden="true" />
+      <div className="login-premium-glow login-premium-glow-primary" aria-hidden="true" />
+      <div className="login-premium-glow login-premium-glow-secondary" aria-hidden="true" />
+      <section className="login-premium-wrap relative z-[1] mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[31.5rem] flex-col justify-center gap-4">
         {success ? (
           <FeedbackMessage type="success" title="Acesso atualizado">
             {success}
@@ -28,7 +29,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
           </FeedbackMessage>
         ) : null}
         <LoginForm />
-        <p className="login-clean-footer text-center text-xs leading-5 text-[var(--text-tertiary)]">
+        <p className="login-premium-footer text-center text-xs leading-5 text-[var(--text-tertiary)]">
           InfraOS · acesso interno restrito · use apenas contas autorizadas.
         </p>
       </section>

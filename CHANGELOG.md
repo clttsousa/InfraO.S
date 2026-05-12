@@ -1,3 +1,15 @@
+# Changelog
+
+## v6.12.1
+- corrigida a bottom navigation aparecendo indevidamente no Windows/desktop junto com a sidebar lateral;
+- adicionada proteção CSS para esconder `.mobile-bottom-nav` e overlay de menu mobile em telas `lg` ou maiores;
+- removido padding inferior reservado para navegação mobile em desktop;
+- sidebar desktop recebeu classe dedicada para reforçar o comportamento responsivo;
+- tela de login refeita com composição mais premium, fundo com gradiente sutil, card mais presente, logo centralizado e textos reduzidos;
+- controle de tema no login ficou discreto e não domina mais o card;
+- mantidas autenticação, PWA, intervenções, notificações, dashboard e demais módulos;
+- sem migration nova.
+
 ## v6.12.0
 - correção da navegação mobile para remover a duplicidade entre sidebar lateral e bottom navigation
 - novo menu mobile em bottom sheet com opções completas, respeitando permissões do usuário

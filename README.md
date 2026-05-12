@@ -1,14 +1,35 @@
-# InfraOS v6.12
+# InfraOS v6.12.1
 
 Painel interno para operação de ordens de serviço, com autenticação própria, trilha de auditoria, relatórios e fila operacional pensada para uso diário.
 
 ## O que entrou nesta versão
-- correção da navegação mobile para não exibir sidebar e bottom nav ao mesmo tempo;
-- novo menu mobile em bottom sheet com usuários, técnicos, relatórios, auditoria, configurações, perfil, nova O.S. e logout;
-- topbar mobile mais limpa, sem botão de sidebar redundante;
-- login simplificado, centralizado e organizado no Windows e no mobile;
-- ajustes de espaçamento, safe area e hierarchy para Android/iPhone/PWA;
+- hotfix para impedir que a bottom navigation apareça no Windows/desktop;
+- desktop/notebook agora usa somente sidebar lateral;
+- mobile mantém somente bottom navigation + menu em bottom sheet;
+- padding inferior da bottom nav removido em telas grandes;
+- login redesenhado com visual mais premium, card com mais presença e menos textos;
+- ajustes rápidos de responsividade e safe area;
 - pacote sem migration nova.
+
+
+## V6.12.1 — Hotfix Navegação Responsiva + Login Premium
+
+A V6.12.1 corrige a duplicidade de navegação vista no desktop/Windows e refina novamente a tela de login para uma composição mais premium, simples e objetiva.
+
+Principais correções:
+- bottom navigation fica visível somente em telas menores que `lg`;
+- desktop/notebook usa apenas a sidebar lateral;
+- padding inferior reservado para bottom nav é removido em desktop;
+- sidebar desktop recebe classe dedicada `desktop-sidebar`;
+- conteúdo mobile mantém safe area para não ficar atrás da barra inferior;
+- login redesenhado com fundo premium, card com mais presença, logo centralizado, textos reduzidos e tema como controle discreto;
+- formulário de login mantém autenticação e validações existentes;
+- sem migration nova.
+
+Validação recomendada:
+- conferir desktop em 1366px e 1920px: apenas sidebar lateral, sem barra inferior;
+- conferir mobile em 390px e 430px: apenas bottom navigation e menu em sheet;
+- conferir login em desktop e mobile.
 
 ## V6.12 — Mobile Premium, Menu Único e Login Limpo
 

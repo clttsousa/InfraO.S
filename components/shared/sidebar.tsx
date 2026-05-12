@@ -82,7 +82,7 @@ function SidebarBody({ user, onNavigate, compact = false }: { user: SessionUser;
 export function Sidebar({ user, mobileOpen = false, onClose }: { user: SessionUser; mobileOpen?: boolean; onClose?: () => void }) {
   return (
     <>
-      <aside className="hidden w-[96px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar-surface)] lg:flex">
+      <aside className="desktop-sidebar hidden w-[96px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar-surface)] lg:flex">
         <SidebarBody user={user} compact />
       </aside>
       {mobileOpen ? (

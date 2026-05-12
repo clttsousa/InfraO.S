@@ -24,7 +24,7 @@ export function AppShell({ children, user, notifications }: { children: ReactNod
           <div className="flex min-h-screen min-w-0 flex-1 flex-col">
             <Topbar pathname={pathname} user={user} notifications={notifications} />
             <PwaActivationPrompt />
-            <main className="flex-1 pb-[calc(4.85rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
+            <main className="app-main-content flex-1 pb-[calc(4.85rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
             <MobileBottomNav user={user} />
           </div>
         </div>
