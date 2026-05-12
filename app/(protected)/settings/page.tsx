@@ -4,13 +4,17 @@ import { PageHeader, Surface } from "@/components/shared/ui";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { DeviceNotificationSettings } from "@/components/pwa/device-notification-settings";
 import { AdminPreferencesPanel } from "@/components/settings/admin-preferences-panel";
+import { InterventionReminderSettingsForm } from "@/components/settings/intervention-reminder-settings-form";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { requireAdmin } from "@/lib/session";
 import { getSystemHealth } from "@/lib/system-health";
+import { getInterventionReminderSettings } from "@/lib/server-data/reminder-settings";
+
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   await requireAdmin();
-  const health = await getSystemHealth();
+  const [health, reminderSettings] = await Promise.all([getSystemHealth(), getInterventionReminderSettings()]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -21,6 +25,9 @@ export default async function SettingsPage() {
             <PageHeader title="Configurações" description="Ajustes administrativos, preferências de operação e validações de ambiente." actions={<Link href="/profile" className="btn-base btn-secondary btn-md">Meu acesso</Link>} />
           </Surface>
           <AdminPreferencesPanel />
+          <Surface className="p-5">
+            <InterventionReminderSettingsForm settings={reminderSettings} />
+          </Surface>
           <Surface className="p-5">
             <DeviceNotificationSettings />
           </Surface>

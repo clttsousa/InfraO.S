@@ -65,7 +65,7 @@ export function Topbar({ pathname, user, notifications }: { pathname: string; us
               </button>
             ) : null}
             <NotificationBell summary={notifications} />
-            <ThemeToggle />
+            <div className="hidden md:block"><ThemeToggle /></div>
             <Link href="/orders/new" className="hidden sm:block"><Button>Nova O.S.</Button></Link>
             <div className="hidden sm:block"><LogoutButton userName={user.name} /></div>
           </div>

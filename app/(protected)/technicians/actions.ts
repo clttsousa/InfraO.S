@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSafeActionErrorMessage } from "@/lib/action-errors";
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { ensureUuid } from "@/lib/validation";
@@ -23,7 +24,11 @@ export async function createTechnicianAction(formData: FormData) {
   const isActive = formData.get("isActive") === "on";
 
   if (!fullName) fail("Nome do técnico obrigatório.");
-  await query(`insert into technicians (full_name, phone, is_active) values ($1, nullif($2, ''), $3)`, [fullName, phone, isActive]);
+  try {
+    await query(`insert into technicians (full_name, phone, is_active) values ($1, nullif($2, ''), $3)`, [fullName, phone, isActive]);
+  } catch (error) {
+    fail(getSafeActionErrorMessage(error, "Não foi possível cadastrar o técnico."));
+  }
   done("Técnico cadastrado.");
 }
 
@@ -34,7 +39,11 @@ export async function updateTechnicianAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "").trim();
 
   if (!fullName) fail("Nome do técnico obrigatório.");
-  await query(`update technicians set full_name = $2, phone = nullif($3, ''), updated_at = now() where id = $1`, [id, fullName, phone]);
+  try {
+    await query(`update technicians set full_name = $2, phone = nullif($3, ''), updated_at = now() where id = $1`, [id, fullName, phone]);
+  } catch (error) {
+    fail(getSafeActionErrorMessage(error, "Não foi possível atualizar o técnico."));
+  }
   done("Técnico atualizado.");
 }
 
@@ -43,6 +52,10 @@ export async function toggleTechnicianAction(formData: FormData) {
   const id = ensureUuid(String(formData.get("id") ?? ""), "Técnico");
   const nextActive = String(formData.get("nextActive") ?? "false") === "true";
 
-  await query(`update technicians set is_active = $2, updated_at = now() where id = $1`, [id, nextActive]);
+  try {
+    await query(`update technicians set is_active = $2, updated_at = now() where id = $1`, [id, nextActive]);
+  } catch (error) {
+    fail(getSafeActionErrorMessage(error, "Não foi possível alterar o status do técnico."));
+  }
   done("Status do técnico atualizado.");
 }

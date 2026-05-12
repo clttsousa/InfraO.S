@@ -6,6 +6,8 @@ import { ButtonLink, PageHeader, SelectInput, Surface, TextInput } from "@/compo
 import { getAuditEvents, getInternalUsers } from "@/lib/data";
 import { requireAdmin } from "@/lib/session";
 
+export const dynamic = "force-dynamic";
+
 const ACTION_OPTIONS = [
   { label: "Todas as ações", value: "all" },
   { label: "Criação", value: "order.created" },

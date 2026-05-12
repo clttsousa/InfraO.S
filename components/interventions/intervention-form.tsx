@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapPin, Plus, Trash2, Wand2 } from "lucide-react";
+import { BellRing, MapPin, Plus, Trash2, Wand2 } from "lucide-react";
 import { createInterventionAction, updateInterventionAction } from "@/app/(protected)/intervencoes/actions";
 import { FormStateGuard } from "@/components/shared/form-state-guard";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { Button, ButtonLink, FormHelper, FormHint, FormSection, SelectInput, TextAreaInput, TextInput } from "@/components/shared/ui";
 import { INTERVENTION_SOURCE_OPTIONS, INTERVENTION_STATUS_OPTIONS, INTERVENTION_TYPE_OPTIONS } from "@/lib/constants";
 import { parseInterventionMessage } from "@/lib/intervention-parser";
-import type { InternalUserItem, InterventionDetail, InterventionPointItem } from "@/types";
+import { DEFAULT_REMINDER_TYPES, REMINDER_TYPE_OPTIONS, summarizeReminderConfig } from "@/lib/intervention-reminder-config";
+import type { InternalUserItem, InterventionDetail, InterventionPointItem, ReminderTypeDb } from "@/types";
 
 type EditablePoint = {
   key: string;
@@ -44,6 +45,15 @@ export function InterventionForm({ intervention, internalUsers, closeHref, mode 
   const [notes, setNotes] = useState(intervention?.notes ?? "");
   const [responsibleUserId, setResponsibleUserId] = useState(intervention?.responsibleId ?? "");
   const [points, setPoints] = useState<EditablePoint[]>(initialPoints);
+  const [reminderTypes, setReminderTypes] = useState<ReminderTypeDb[]>(intervention?.reminderConfig?.enabledTypes?.length ? intervention.reminderConfig.enabledTypes : DEFAULT_REMINDER_TYPES);
+  const [dailyReminderTime, setDailyReminderTime] = useState(intervention?.reminderConfig?.dailyTime ?? "08:00");
+  const [customReminderAt, setCustomReminderAt] = useState(intervention?.reminderConfig?.customAt ?? "");
+
+  const toggleReminderType = (value: ReminderTypeDb) => {
+    setReminderTypes((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+  };
+
+  const reminderSummary = summarizeReminderConfig({ enabledTypes: reminderTypes, dailyTime: dailyReminderTime, customAt: customReminderAt || null });
 
   const applyParser = () => {
     const parsed = parseInterventionMessage(rawMessage);
@@ -99,6 +109,42 @@ export function InterventionForm({ intervention, internalUsers, closeHref, mode 
             <SelectInput label="Responsável" name="responsibleUserId" value={responsibleUserId} onChange={(event) => setResponsibleUserId(event.target.value)} options={[{ label: "Sem responsável definido", value: "" }, ...activeUsers.map((user) => ({ label: `${user.name} (${user.role === "ADMIN" ? "Admin" : "Operador"})`, value: user.id }))]} description="Opcional nesta versão. Ajuda a filtrar quem acompanha a intervenção." />
           </div>
           <div className="md:col-span-2"><TextAreaInput label="Observações" name="notes" value={notes ?? ""} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder="Contexto interno, riscos ou combinados da equipe." /></div>
+        </div>
+      </FormSection>
+
+
+      <FormSection title="Lembretes" description="Escolha quando o InfraOS deve lembrar esta intervenção. Lembretes diários usam o horário configurado abaixo." icon={<BellRing className="h-4 w-4 text-[var(--primary)]" />}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {REMINDER_TYPE_OPTIONS.map((option) => {
+            const checked = reminderTypes.includes(option.value);
+            const disabled = option.value === "custom" && !customReminderAt;
+            return (
+              <label
+                key={option.value}
+                className={`app-surface-muted flex cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border p-3 transition ${checked ? "border-[color-mix(in_srgb,var(--primary)_40%,var(--border))]" : "border-[var(--border)]"}`}
+              >
+                <input
+                  type="checkbox"
+                  name="reminderType"
+                  value={option.value}
+                  checked={checked}
+                  onChange={() => toggleReminderType(option.value)}
+                  className="mt-1 h-4 w-4 accent-[var(--primary)]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-[var(--text-primary)]">{option.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">{disabled ? "Informe uma data/hora personalizada para ativar esta opção." : option.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <TextInput label="Horário dos lembretes diários" name="dailyReminderTime" type="time" value={dailyReminderTime} onChange={(event) => setDailyReminderTime(event.target.value)} description="Usado para 1 dia antes e no dia da intervenção." />
+          <TextInput label="Lembrete personalizado" name="customReminderAt" type="datetime-local" value={customReminderAt} onChange={(event) => { setCustomReminderAt(event.target.value); if (event.target.value && !reminderTypes.includes("custom")) setReminderTypes((current) => [...current, "custom"]); }} description="Opcional. Use quando precisar de um horário específico." />
+        </div>
+        <div className="mt-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3 text-sm leading-6 text-[var(--text-secondary)]">
+          <span className="font-semibold text-[var(--text-primary)]">Resumo:</span> esta intervenção terá {reminderTypes.length} lembrete(s): {reminderSummary}.
         </div>
       </FormSection>
 

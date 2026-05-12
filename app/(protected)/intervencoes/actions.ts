@@ -4,14 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { PoolClient } from "pg";
 import { writeAuditEvent } from "@/lib/audit";
+import { getSafeActionErrorMessage, isNextRedirectError } from "@/lib/action-errors";
 import { INTERVENTION_SOURCE_OPTIONS, INTERVENTION_STATUS_OPTIONS, INTERVENTION_TYPE_OPTIONS } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { combineDateAndTime } from "@/lib/interventions";
 import { publishRealtimeEvent } from "@/lib/realtime";
+import { DEFAULT_REMINDER_TYPES, REMINDER_TYPE_OPTIONS, normalizeDailyTime, normalizeReminderTypes } from "@/lib/intervention-reminder-config";
 import { syncInterventionReminders } from "@/lib/reminders";
 import { requireSession } from "@/lib/session";
 import { cleanText, ensureDateTime, ensureEnum, ensureUuid, normalizeUuid } from "@/lib/validation";
-import type { InterventionSourceDb, InterventionStatusDb, InterventionTypeDb } from "@/types";
+import type { InterventionReminderConfig, InterventionSourceDb, InterventionStatusDb, InterventionTypeDb, ReminderTypeDb } from "@/types";
 
 const typeValues = INTERVENTION_TYPE_OPTIONS.map((item) => item.value) as InterventionTypeDb[];
 const statusValues = INTERVENTION_STATUS_OPTIONS.map((item) => item.value) as InterventionStatusDb[];
@@ -44,6 +46,17 @@ function normalizePoints(formData: FormData) {
     }));
 }
 
+function normalizeReminderPayload(formData: FormData): InterventionReminderConfig {
+  const enabledTypes = normalizeReminderTypes(formData.getAll("reminderType"), DEFAULT_REMINDER_TYPES);
+  const customAt = cleanText(formData.get("customReminderAt"));
+  const finalTypes = enabledTypes.filter((type) => type !== "custom" || Boolean(customAt));
+  return {
+    enabledTypes: finalTypes.length ? finalTypes as ReminderTypeDb[] : DEFAULT_REMINDER_TYPES,
+    dailyTime: normalizeDailyTime(cleanText(formData.get("dailyReminderTime"))),
+    customAt: customAt || null
+  };
+}
+
 function normalizePayload(formData: FormData) {
   const date = cleanText(formData.get("date"));
   const startAt = combineDateAndTime(date, cleanText(formData.get("startTime")));
@@ -72,7 +85,8 @@ function normalizePayload(formData: FormData) {
     originalMessage: cleanText(formData.get("originalMessage")),
     notes: cleanText(formData.get("notes")),
     responsibleId,
-    points: normalizePoints(formData)
+    points: normalizePoints(formData),
+    reminderConfig: normalizeReminderPayload(formData)
   };
 }
 
@@ -117,13 +131,13 @@ export async function createInterventionAction(formData: FormData) {
       `
         insert into infra_events (
           title, type, location_name, start_at, end_at, status, source,
-          original_message, notes, responsible_user_id, created_by, updated_by
+          original_message, notes, responsible_user_id, reminder_config, created_by, updated_by
         )
         values (
           $1, $2, $3,
           ($4::timestamp at time zone 'America/Sao_Paulo'),
           ($5::timestamp at time zone 'America/Sao_Paulo'),
-          $6, $7, nullif($8, ''), nullif($9, ''), $10::uuid, $11::uuid, $11::uuid
+          $6, $7, nullif($8, ''), nullif($9, ''), $10::uuid, $11::jsonb, $12::uuid, $12::uuid
         )
         returning id::text
       `,
@@ -138,6 +152,7 @@ export async function createInterventionAction(formData: FormData) {
         payload.originalMessage,
         payload.notes,
         payload.responsibleId,
+        JSON.stringify(payload.reminderConfig),
         session.id
       ]
     );
@@ -162,7 +177,8 @@ export async function createInterventionAction(formData: FormData) {
         locationName: payload.locationName,
         startAt: payload.startAt,
         endAt: payload.endAt,
-        pointsCount: payload.points.length
+        pointsCount: payload.points.length,
+        reminderConfig: payload.reminderConfig
       }
     });
 
@@ -171,9 +187,10 @@ export async function createInterventionAction(formData: FormData) {
     publishInterventionRealtime(eventId, "intervention.created", { title: payload.title, locationName: payload.locationName });
     redirect(`/intervencoes?selected=${eventId}&success=${encodeMessage("Intervenção criada com sucesso.")}`);
   } catch (error) {
+    if (isNextRedirectError(error)) throw error;
     await client.query("rollback");
     console.error("[infraos] create intervention error", error);
-    redirect(appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível criar a intervenção."));
+    redirect(appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível criar a intervenção.")));
   } finally {
     client.release();
   }
@@ -219,7 +236,8 @@ export async function updateInterventionAction(formData: FormData) {
             original_message = nullif($9, ''),
             notes = nullif($10, ''),
             responsible_user_id = $11::uuid,
-            updated_by = $12::uuid,
+            reminder_config = $12::jsonb,
+            updated_by = $13::uuid,
             updated_at = now()
         where id = $1::uuid
       `,
@@ -235,6 +253,7 @@ export async function updateInterventionAction(formData: FormData) {
         payload.originalMessage,
         payload.notes,
         payload.responsibleId,
+        JSON.stringify(payload.reminderConfig),
         session.id
       ]
     );
@@ -253,7 +272,7 @@ export async function updateInterventionAction(formData: FormData) {
       actorUserId: session.id,
       actorName: session.name,
       note: "Intervenção atualizada pela tela de Intervenções.",
-      metadata: { pointsCount: payload.points.length }
+      metadata: { pointsCount: payload.points.length, reminderConfig: payload.reminderConfig }
     });
 
     await client.query("commit");
@@ -261,9 +280,10 @@ export async function updateInterventionAction(formData: FormData) {
     publishInterventionRealtime(eventId, current.status !== payload.status ? "intervention.status_changed" : "intervention.updated", { title: payload.title, status: payload.status });
     redirect(appendMessage(`/intervencoes?selected=${eventId}`, "success", "Intervenção atualizada com sucesso."));
   } catch (error) {
+    if (isNextRedirectError(error)) throw error;
     await client.query("rollback");
     console.error("[infraos] update intervention error", error);
-    redirect(appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível atualizar a intervenção."));
+    redirect(appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível atualizar a intervenção.")));
   } finally {
     client.release();
   }
@@ -309,9 +329,10 @@ export async function changeInterventionStatusAction(formData: FormData) {
     publishInterventionRealtime(eventId, "intervention.status_changed", { title: current.title, status });
     redirect(appendMessage(`/intervencoes?selected=${eventId}`, "success", "Status da intervenção atualizado."));
   } catch (error) {
+    if (isNextRedirectError(error)) throw error;
     await client.query("rollback");
     console.error("[infraos] change intervention status error", error);
-    redirect(appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível alterar o status."));
+    redirect(appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível alterar o status.")));
   } finally {
     client.release();
   }

@@ -1,5 +1,45 @@
 # Changelog
 
+## V6.14.0 — Mobile Premium Final
+
+- Refinada a bottom navigation mobile com melhor safe area, altura, estado ativo e área de toque.
+- Reorganizado o menu mobile em grupos: Operação, Gestão e Sistema.
+- Topbar mobile simplificada, sem ações duplicadas e sem poluição visual.
+- Dashboard mobile ganhou bloco **Prioridade operacional** com atalhos para O.S. atrasadas, intervenções de hoje e pendências.
+- Cards superiores do dashboard agora se comportam como carrossel horizontal no mobile.
+- Cards de O.S. e intervenções receberam ajustes de hierarquia, compactação e leitura.
+- Filtros de ordens foram refinados para uso no celular, com comportamento sticky e chips roláveis.
+- Detalhes/drawers em mobile ficaram mais próximos de sheet de app, com padding/altura/raio ajustados.
+- Mensagem original da intervenção ficou recolhível/expansível para não dominar a tela.
+- Seção de lembretes configuráveis recebeu ajustes de toque e legibilidade no mobile.
+- Central de notificações agora agrupa itens por Intervenções, Ordens/alertas e Movimentações.
+- Popover de notificações foi ajustado para comportamento melhor em celular.
+- Login mobile, inputs, botões e form actions receberam refinamento final de toque e espaçamento.
+- Sem migration nova.
+
+## V6.13.0 — Lembretes Configuráveis
+
+- Adicionada configuração individual de lembretes em intervenções.
+- Incluídas opções: 1 dia antes, no dia, 6 horas antes, 2 horas antes, 30 minutos antes e personalizado.
+- Adicionado horário diário configurável para lembretes de dia anterior/no dia.
+- Adicionada seção de lembretes no detalhe da intervenção com status pendente/processado/falhou/cancelado.
+- Adicionada configuração global de padrões em Configurações > Lembretes de intervenções.
+- Atualizado cron `/api/cron/reminders` para processar todos os tipos configuráveis.
+- Criada migration `database/19_configurable_reminders.sql`.
+
+
+## v6.12.4
+- adicionada camada de estabilidade para server actions com helper `lib/action-errors.ts`;
+- corrigido tratamento de `NEXT_REDIRECT` nas actions de Intervenções, evitando falso erro após criar/editar/mudar status;
+- corrigido fluxo de filtros salvos em Ordens para não capturar redirect de sucesso como erro;
+- mensagens técnicas de banco/SQL/stack trace são sanitizadas antes de aparecer para o usuário;
+- feedbacks vindos da URL agora usam `decodeSearchParamMessage` nas telas principais e detalhes;
+- `FormStateGuard` passou a reduzir submit duplicado por duplo clique;
+- toasts flutuantes respeitam a bottom navigation no mobile;
+- páginas protegidas e dependentes de sessão foram marcadas como `force-dynamic` para reduzir tentativa de geração estática indevida;
+- `tsconfig.json` ajustado para TypeScript 6.0;
+- sem migration nova.
+
 ## v6.12.3
 - criado utilitário client-side de diagnóstico de ambiente para identificar iOS/iPadOS, Android, Windows/Desktop, modo PWA instalado, Service Worker, Push API, Notification API e `showNotification`;
 - fluxo especial para iPhone/iPad: quando o InfraOS estiver aberto no Safari/navegador normal, o sistema não oferece ativação direta de push e mostra orientação para adicionar à Tela de Início;
@@ -159,6 +199,17 @@
 
 # Changelog
 
+## V6.13.0 — Lembretes Configuráveis
+
+- Adicionada configuração individual de lembretes em intervenções.
+- Incluídas opções: 1 dia antes, no dia, 6 horas antes, 2 horas antes, 30 minutos antes e personalizado.
+- Adicionado horário diário configurável para lembretes de dia anterior/no dia.
+- Adicionada seção de lembretes no detalhe da intervenção com status pendente/processado/falhou/cancelado.
+- Adicionada configuração global de padrões em Configurações > Lembretes de intervenções.
+- Atualizado cron `/api/cron/reminders` para processar todos os tipos configuráveis.
+- Criada migration `database/19_configurable_reminders.sql`.
+
+
 ## v6.12.3
 - criado utilitário client-side de diagnóstico de ambiente para identificar iOS/iPadOS, Android, Windows/Desktop, modo PWA instalado, Service Worker, Push API, Notification API e `showNotification`;
 - fluxo especial para iPhone/iPad: quando o InfraOS estiver aberto no Safari/navegador normal, o sistema não oferece ativação direta de push e mostra orientação para adicionar à Tela de Início;
@@ -260,6 +311,17 @@
 - mantém o fundo visual e a identidade sem excesso de informação
 
 # Changelog
+
+## V6.13.0 — Lembretes Configuráveis
+
+- Adicionada configuração individual de lembretes em intervenções.
+- Incluídas opções: 1 dia antes, no dia, 6 horas antes, 2 horas antes, 30 minutos antes e personalizado.
+- Adicionado horário diário configurável para lembretes de dia anterior/no dia.
+- Adicionada seção de lembretes no detalhe da intervenção com status pendente/processado/falhou/cancelado.
+- Adicionada configuração global de padrões em Configurações > Lembretes de intervenções.
+- Atualizado cron `/api/cron/reminders` para processar todos os tipos configuráveis.
+- Criada migration `database/19_configurable_reminders.sql`.
+
 
 ## v6.12.3
 - criado utilitário client-side de diagnóstico de ambiente para identificar iOS/iPadOS, Android, Windows/Desktop, modo PWA instalado, Service Worker, Push API, Notification API e `showNotification`;

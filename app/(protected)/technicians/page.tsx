@@ -6,13 +6,16 @@ import { ButtonLink, FeedbackMessage, FormSection, PageHeader, SelectInput, Surf
 import { getTechnicianById, getTechnicians } from "@/lib/data";
 import { requireAdmin } from "@/lib/session";
 import { createTechnicianAction, toggleTechnicianAction, updateTechnicianAction } from "./actions";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
+
+export const dynamic = "force-dynamic";
 
 export default async function TechniciansPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   await requireAdmin();
   const params = (await searchParams) ?? {};
   const editId = typeof params.edit === "string" ? params.edit : "";
-  const success = typeof params.success === "string" ? decodeURIComponent(params.success) : "";
-  const error = typeof params.error === "string" ? decodeURIComponent(params.error) : "";
+  const success = typeof params.success === "string" ? decodeSearchParamMessage(params.success) : "";
+  const error = typeof params.error === "string" ? decodeSearchParamMessage(params.error) : "";
   const technicians = await getTechnicians();
   const editing = editId ? await getTechnicianById(editId) : null;
 

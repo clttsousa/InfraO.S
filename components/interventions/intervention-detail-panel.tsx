@@ -8,6 +8,7 @@ import { OrderActionOverlay } from "@/components/orders/order-action-overlay";
 import { SubmitButton } from "@/components/shared/form-submit-button";
 import { Button, EmptyState, FeedbackMessage, StatLine, Surface } from "@/components/shared/ui";
 import type { InternalUserItem, InterventionDetail, InterventionStatusDb } from "@/types";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 type Action = "edit" | "cancel" | "conclude" | "progress" | "program" | undefined;
 
@@ -75,8 +76,8 @@ export function InterventionDetailPanel({ intervention, internalUsers, action, o
 
   return (
     <div className="space-y-5 p-5">
-      {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-      {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+      {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+      {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
 
       <Surface className="p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -129,12 +130,44 @@ export function InterventionDetailPanel({ intervention, internalUsers, action, o
         </div>
       </Surface>
 
+
       <Surface className="p-5">
-        <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Mensagem original</h3></div>
-        {intervention.originalMessage ? (
-          <pre className="mt-4 whitespace-pre-wrap rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--text-secondary)]">{intervention.originalMessage}</pre>
+        <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Lembretes</h3></div>
+        {intervention.reminders.length === 0 ? (
+          <EmptyState compact title="Sem lembretes" description="Configure lembretes na edição da intervenção para receber alertas internos e PWA." />
         ) : (
-          <EmptyState compact title="Sem mensagem original" description="A intervenção foi cadastrada manualmente ou sem colar a mensagem recebida." />
+          <div className="mt-4 space-y-3">
+            {intervention.reminders.map((reminder) => (
+              <div key={reminder.id} className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[var(--text-primary)]">{reminder.type}</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">Programado para {reminder.remindAt}</p>
+                    {reminder.processedAt ? <p className="mt-1 text-xs text-[var(--text-secondary)]">Processado em {reminder.processedAt}</p> : null}
+                    {reminder.errorMessage ? <p className="mt-1 text-xs text-[var(--danger)]">{reminder.errorMessage}</p> : null}
+                  </div>
+                  <span className={`badge-base ${reminder.rawStatus === "processed" ? "badge-success" : reminder.rawStatus === "failed" ? "badge-danger" : reminder.rawStatus === "canceled" ? "badge-neutral" : "badge-primary"}`}>{reminder.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Surface>
+
+      <Surface className="intervention-original-message p-5">
+        {intervention.originalMessage ? (
+          <details className="mobile-collapsible-section" open>
+            <summary className="mobile-collapsible-summary">
+              <span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" />Mensagem original</span>
+              <span className="text-xs text-[var(--text-tertiary)]">toque para expandir/recolher</span>
+            </summary>
+            <pre className="mt-4 whitespace-pre-wrap rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--text-secondary)]">{intervention.originalMessage}</pre>
+          </details>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[var(--primary)]" /><h3 className="app-title text-lg font-semibold">Mensagem original</h3></div>
+            <EmptyState compact title="Sem mensagem original" description="A intervenção foi cadastrada manualmente ou sem colar a mensagem recebida." />
+          </div>
         )}
       </Surface>
 

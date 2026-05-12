@@ -94,13 +94,24 @@ export function NotificationsLivePage({ initialSummary }: { initialSummary: Noti
             <EmptyState compact title="Nenhum alerta agora" description="Quando surgirem ordens críticas, intervenções próximas ou novas movimentações, elas aparecem aqui sem você precisar procurar manualmente." />
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-            {summary.items.map((item) => (
-              <a key={item.id} href={item.href} className={`notification-card notification-card-${item.level}`}>
-                <div className="notification-card-title">{item.title}</div>
-                <div className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{item.description}</div>
-                {item.when ? <div className="mt-2 text-xs text-[var(--text-tertiary)]">{item.when}</div> : null}
-              </a>
+          <div className="mt-4 space-y-5">
+            {[
+              { key: "intervention", label: "Intervenções", items: summary.items.filter((item) => item.category === "intervention") },
+              { key: "order", label: "Ordens e alertas", items: summary.items.filter((item) => item.category !== "intervention" && item.category !== "activity") },
+              { key: "activity", label: "Movimentações", items: summary.items.filter((item) => item.category === "activity") }
+            ].filter((group) => group.items.length > 0).map((group) => (
+              <section key={group.key} className="notification-mobile-group">
+                <div className="notification-mobile-group-title">{group.label}</div>
+                <div className="mt-2 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {group.items.map((item) => (
+                    <a key={item.id} href={item.href} className={`notification-card notification-card-${item.level}`}>
+                      <div className="notification-card-title">{item.title}</div>
+                      <div className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{item.description}</div>
+                      {item.when ? <div className="mt-2 text-xs text-[var(--text-tertiary)]">{item.when}</div> : null}
+                    </a>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

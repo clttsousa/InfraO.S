@@ -85,7 +85,7 @@ export function useNotifications() {
 
 function NotificationContainer({ notifications, onDismiss }: { notifications: Notification[]; onDismiss: (id: string) => void }) {
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(92vw,26rem)] flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-50 flex w-[min(92vw,26rem)] flex-col gap-2 sm:bottom-4 sm:right-4">
       {notifications.map((notification) => (
         <NotificationItem key={notification.id} notification={notification} onDismiss={() => onDismiss(notification.id)} />
       ))}

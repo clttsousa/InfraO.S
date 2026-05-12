@@ -3,13 +3,12 @@ import { db } from "@/lib/db";
 import { APP_TIME_ZONE, formatDateTime } from "@/lib/format";
 import { publishRealtimeEvent } from "@/lib/realtime";
 import { sendPushForNotifications } from "@/lib/push-notifications";
-import type { InterventionStatusDb } from "@/types";
-
-type ReminderType = "one_day_before" | "same_day" | "two_hours_before" | "thirty_minutes_before";
+import { DEFAULT_REMINDER_TYPES, REMINDER_TYPE_LABELS, normalizeReminderConfig, normalizeDailyTime } from "@/lib/intervention-reminder-config";
+import type { InterventionReminderConfig, InterventionStatusDb, ReminderTypeDb } from "@/types";
 
 type DueReminderRow = {
   reminder_id: string;
-  reminder_type: ReminderType;
+  reminder_type: ReminderTypeDb;
   remind_at: string;
   event_id: string;
   title: string;
@@ -21,28 +20,47 @@ type DueReminderRow = {
   points_count: string;
 };
 
-type NotificationRecipientRow = {
-  id: string;
+type NotificationRecipientRow = { id: string };
+
+type ReminderSettingRow = {
+  default_daily_time: string | null;
+  default_enabled_types: string[] | null;
 };
 
-const DEFAULT_REMINDER_TYPES: ReminderType[] = ["one_day_before", "same_day"];
+async function getGlobalReminderDefaults(client: PoolClient): Promise<InterventionReminderConfig> {
+  try {
+    const result = await client.query<ReminderSettingRow>(
+      `select default_daily_time, default_enabled_types from intervention_reminder_settings where id = 1 limit 1`
+    );
+    const row = result.rows[0];
+    if (!row) return normalizeReminderConfig(null);
+    return normalizeReminderConfig({ enabledTypes: row.default_enabled_types ?? DEFAULT_REMINDER_TYPES, dailyTime: row.default_daily_time ?? "08:00" });
+  } catch {
+    // Compatibilidade para ambientes que ainda não aplicaram a migration 19.
+    return normalizeReminderConfig(null);
+  }
+}
 
-function reminderLabel(type: ReminderType) {
+function reminderLabel(type: ReminderTypeDb) {
   switch (type) {
     case "one_day_before":
       return "amanhã";
     case "same_day":
       return "hoje";
+    case "six_hours_before":
+      return "em 6 horas";
     case "two_hours_before":
       return "em 2 horas";
     case "thirty_minutes_before":
       return "em 30 minutos";
+    case "custom":
+      return "no horário personalizado";
     default:
       return "em breve";
   }
 }
 
-function notificationType(type: ReminderType) {
+function notificationType(type: ReminderTypeDb) {
   return type === "same_day" ? "intervention_today" : "intervention_reminder";
 }
 
@@ -65,10 +83,33 @@ function buildNotificationKey(row: DueReminderRow) {
     month: "2-digit",
     day: "2-digit"
   }).format(new Date(row.start_at));
-  return `intervention:${row.event_id}:${row.reminder_type}:${localDateKey}`;
+  return `intervention:${row.event_id}:${row.reminder_type}:${localDateKey}:${row.reminder_id}`;
 }
 
-async function upsertReminder(client: PoolClient, eventId: string, reminderType: ReminderType, expression: string) {
+function getReminderExpression(reminderType: ReminderTypeDb, config: InterventionReminderConfig) {
+  const dailyTime = normalizeDailyTime(config.dailyTime);
+  switch (reminderType) {
+    case "one_day_before":
+      return `((((start_at at time zone '${APP_TIME_ZONE}')::date - interval '1 day') + time '${dailyTime}') at time zone '${APP_TIME_ZONE}')`;
+    case "same_day":
+      return `(((start_at at time zone '${APP_TIME_ZONE}')::date + time '${dailyTime}') at time zone '${APP_TIME_ZONE}')`;
+    case "six_hours_before":
+      return `(start_at - interval '6 hours')`;
+    case "two_hours_before":
+      return `(start_at - interval '2 hours')`;
+    case "thirty_minutes_before":
+      return `(start_at - interval '30 minutes')`;
+    case "custom":
+      return config.customAt ? `($3::timestamp at time zone '${APP_TIME_ZONE}')` : null;
+    default:
+      return null;
+  }
+}
+
+async function upsertReminder(client: PoolClient, eventId: string, reminderType: ReminderTypeDb, config: InterventionReminderConfig) {
+  const expression = getReminderExpression(reminderType, config);
+  if (!expression) return;
+  const params = reminderType === "custom" ? [eventId, reminderType, config.customAt] : [eventId, reminderType];
   await client.query(
     `
       insert into reminders (event_id, reminder_type, remind_at, status, processed_at, error_message)
@@ -83,13 +124,13 @@ async function upsertReminder(client: PoolClient, eventId: string, reminderType:
         error_message = null,
         updated_at = now()
     `,
-    [eventId, reminderType]
+    params
   );
 }
 
 export async function syncInterventionReminders(client: PoolClient, eventId: string) {
-  const eventResult = await client.query<{ status: InterventionStatusDb }>(
-    `select status from infra_events where id = $1::uuid and archived_at is null`,
+  const eventResult = await client.query<{ status: InterventionStatusDb; reminder_config: unknown }>(
+    `select status, reminder_config from infra_events where id = $1::uuid and archived_at is null`,
     [eventId]
   );
   const event = eventResult.rows[0];
@@ -97,35 +138,31 @@ export async function syncInterventionReminders(client: PoolClient, eventId: str
 
   if (["CONCLUIDO", "CANCELADO"].includes(event.status)) {
     await client.query(
-      `update reminders set status = 'canceled', updated_at = now() where event_id = $1::uuid and status = 'pending'`,
+      `update reminders set status = 'canceled', canceled_at = coalesce(canceled_at, now()), updated_at = now() where event_id = $1::uuid and status = 'pending'`,
       [eventId]
     );
     return;
   }
 
-  await upsertReminder(
-    client,
-    eventId,
-    "one_day_before",
-    `((((start_at at time zone '${APP_TIME_ZONE}')::date - interval '1 day') + time '08:00') at time zone '${APP_TIME_ZONE}')`
-  );
-  await upsertReminder(
-    client,
-    eventId,
-    "same_day",
-    `(((start_at at time zone '${APP_TIME_ZONE}')::date + time '08:00') at time zone '${APP_TIME_ZONE}')`
-  );
+  const globalDefaults = await getGlobalReminderDefaults(client);
+  const config = event.reminder_config ? normalizeReminderConfig(event.reminder_config) : globalDefaults;
+  const enabledTypes = config.enabledTypes.filter((type) => type !== "custom" || Boolean(config.customAt));
+
+  for (const reminderType of enabledTypes) {
+    await upsertReminder(client, eventId, reminderType, config);
+  }
 
   await client.query(
-    `update reminders set status = 'canceled', updated_at = now() where event_id = $1::uuid and reminder_type <> all($2::text[]) and status = 'pending'`,
-    [eventId, DEFAULT_REMINDER_TYPES]
+    `update reminders
+     set status = 'canceled', canceled_at = coalesce(canceled_at, now()), updated_at = now()
+     where event_id = $1::uuid
+       and reminder_type <> all($2::text[])
+       and status = 'pending'`,
+    [eventId, enabledTypes]
   );
 }
 
 async function getRecipients(client: PoolClient, _responsibleUserId: string | null) {
-  // V6.11: lembretes de intervenção são operacionais e globais.
-  // Todos os usuários internos ativos recebem a notificação interna; o push PWA
-  // é enviado depois para todos os dispositivos ativos de cada usuário.
   const result = await client.query<NotificationRecipientRow>(
     `select id::text from internal_users where is_active = true order by role asc, full_name asc`
   );
@@ -322,18 +359,9 @@ export async function processInterventionReminders() {
       error: error instanceof Error ? error.message : "Falha ao entregar push notifications."
     }));
 
-    return {
-      ok: true,
-      processed,
-      notificationsCreated,
-      pushDelivery,
-      failed,
-      checkedAt: new Date().toISOString()
-    };
+    return { ok: true, processed, notificationsCreated, pushDelivery, failed, checkedAt: new Date().toISOString() };
   } catch (error) {
-    if (!committed) {
-      await client.query("rollback");
-    }
+    if (!committed) await client.query("rollback");
     throw error;
   } finally {
     client.release();

@@ -44,6 +44,7 @@ import {
 } from "@/components/shared/ui";
 import { ORDER_PRIORITY_OPTIONS, ORDER_STATUS_OPTIONS } from "@/lib/constants";
 import type { InternalUserItem, ServiceOrderDetail, ServiceOrderLogItem, TechnicianItem } from "@/types";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
 
 type DetailTab = "notes" | "timeline" | "audit";
 
@@ -125,8 +126,8 @@ export function OrderDetailPanel({ order, technicians, internalUsers, action, on
 
   return (
     <div className="relative space-y-6 p-6 animate-fadeIn">
-      {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-      {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+      {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+      {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
 
       <div>
         <p className="app-eyebrow text-xs font-medium">Detalhe da O.S.</p>

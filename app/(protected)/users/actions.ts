@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getSafeActionErrorMessage } from "@/lib/action-errors";
 import { AUTH_COOKIE_NAME } from "@/lib/constants";
 import { query } from "@/lib/db";
 import { publishRealtimeEvent } from "@/lib/realtime";
@@ -48,7 +49,7 @@ export async function createInternalUserAction(formData: FormData) {
     publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: created.rows[0]?.id, payload: { action: "created" } });
   } catch (error) {
     if (error instanceof Error && /duplicate key|unique/i.test(error.message)) fail("Já existe um usuário com este e-mail.");
-    throw error;
+    fail(getSafeActionErrorMessage(error, "Não foi possível salvar o usuário."));
   }
 
   success("Usuário cadastrado.");
@@ -71,7 +72,7 @@ export async function updateInternalUserAction(formData: FormData) {
     publishRealtimeEvent({ type: "user.updated", scope: "users", entityId: id, payload: { action: "profile_updated" } });
   } catch (error) {
     if (error instanceof Error && /duplicate key|unique/i.test(error.message)) fail("Já existe um usuário com este e-mail.");
-    throw error;
+    fail(getSafeActionErrorMessage(error, "Não foi possível salvar o usuário."));
   }
 
   success(session.id === id ? "Seu usuário foi atualizado." : "Usuário atualizado.");

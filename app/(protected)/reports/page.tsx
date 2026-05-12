@@ -5,6 +5,8 @@ import { buildReportQuery, parseReportFilters } from "@/lib/filter-params";
 import { formatReportAvgHours, getReportsData, getTechnicians, mapReportStatusLabel } from "@/lib/data";
 import type { ReportFilters, TechnicianItem } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReportsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) ?? {};
   const filters: ReportFilters = parseReportFilters(params);

@@ -1,16 +1,47 @@
-# InfraOS v6.12.2
+# InfraOS v6.14.0
 
-Painel interno para operação de ordens de serviço, com autenticação própria, trilha de auditoria, relatórios e fila operacional pensada para uso diário.
+Painel interno para operação de ordens de serviço, intervenções programadas, lembretes configuráveis, notificações e auditoria.
 
 ## O que entrou nesta versão
-- hotfix de layout desktop fluido para remover faixas laterais vazias em telas largas/zoom reduzido;
-- remoção do `max-width` global do AppShell protegido;
-- conteúdo principal agora ocupa todo o espaço restante depois da sidebar;
-- dashboard com containers fluidos, grids com `min-w-0` e melhor uso de telas 1366px, 1440px, 1920px e zoom 80% a 125%;
-- topbar e main ajustados para não gerar overflow horizontal;
-- mobile preservado com bottom navigation, safe area e sem sidebar lateral;
-- pacote sem migration nova.
+- pente fino mobile final com foco em operação no celular;
+- bottom navigation mais premium, com safe area, toque confortável e estados ativos mais claros;
+- menu mobile reorganizado por grupos: Operação, Gestão e Sistema;
+- topbar mobile mais compacta e sem ações duplicadas;
+- dashboard mobile com bloco **Prioridade operacional**;
+- cards superiores do dashboard em carrossel horizontal no mobile;
+- cards de O.S. e intervenções mais compactos e legíveis;
+- filtros de ordens mais adequados ao celular;
+- drawer/sheet de detalhes com visual mais próximo de app;
+- mensagem original da intervenção recolhível no mobile;
+- notificações agrupadas por Intervenções, Ordens/alertas e Movimentações;
+- ajustes em inputs, botões, formulários, login e áreas de toque;
+- sem migration nova.
 
+## V6.14.0 — Mobile Premium Final
+
+Esta versão revisa a experiência mobile do InfraOS tela por tela, preservando o layout desktop fluido e os recursos existentes de intervenções, lembretes configuráveis, PWA, notificações internas, usuários e auditoria.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local compilou, mas o ambiente encerrou por timeout na etapa seguinte, como já vinha ocorrendo em versões anteriores; validar também na Vercel/ambiente real.
+
+## V6.12.4 — Estabilidade Geral e Correções Finas
+
+Esta versão estabiliza fluxos existentes antes dos próximos recursos. Ela revisa actions, mensagens de feedback, redirects, responsividade básica e pontos que poderiam causar erro falso ao usuário.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local compilou e passou TypeScript, mas o ambiente encerrou em `Collecting page data` com `EPIPE`; as páginas protegidas foram marcadas como `force-dynamic` para reduzir geração estática indevida.
 
 ## V6.12.2 — Hotfix Layout Fluido Desktop + Responsividade por Zoom
 
@@ -428,3 +459,36 @@ Teste manual:
 - troque senhas provisórias
 - faça backup antes de upgrades
 - rode `npm run build` antes de publicar
+
+
+## V6.13.0 — Lembretes Configuráveis
+
+A versão V6.13.0 transforma os lembretes de intervenções em uma configuração flexível. Ao criar ou editar uma intervenção, o operador pode selecionar:
+
+- 1 dia antes;
+- No dia;
+- 6 horas antes;
+- 2 horas antes;
+- 30 minutos antes;
+- Personalizado, com data/hora específica.
+
+Os lembretes de dia anterior e do próprio dia usam o horário diário configurado na intervenção. Em **Configurações > Lembretes de intervenções**, o administrador pode definir os padrões aplicados a novas intervenções.
+
+### Migration obrigatória
+
+Execute depois da V6.12.4:
+
+```sql
+database/19_configurable_reminders.sql
+```
+
+### Teste recomendado
+
+1. Aplique a migration `database/19_configurable_reminders.sql`.
+2. Acesse **Configurações > Lembretes de intervenções** e defina os padrões.
+3. Crie uma intervenção com `1 dia antes`, `No dia` e `2 horas antes`.
+4. Abra o detalhe da intervenção e confirme a seção **Lembretes**.
+5. Edite data/horário da intervenção e confirme que lembretes pendentes foram recalculados.
+6. Rode `/api/cron/reminders?secret=SEU_CRON_SECRET` para validar o processamento.
+
+Observação: lembretes já processados permanecem preservados; lembretes pendentes podem ser recalculados/cancelados conforme a edição da intervenção.

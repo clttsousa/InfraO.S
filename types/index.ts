@@ -24,6 +24,26 @@ export type InterventionStatusDb = "PROGRAMADO" | "EM_ACOMPANHAMENTO" | "CONCLUI
 export type InterventionTypeDb = "TROCA_POSTES" | "MANUTENCAO_ELETRICA" | "DESLIGAMENTO_PROGRAMADO" | "OBRA_TERCEIROS" | "REMANEJAMENTO_REDE" | "OUTRO";
 export type InterventionSourceDb = "WHATSAPP" | "EMAIL" | "TELEFONE" | "INTERNO" | "OUTRO";
 export type InterventionQuickFilter = "all" | "today" | "tomorrow" | "week" | "late" | "concluded" | "canceled";
+export type ReminderTypeDb = "one_day_before" | "same_day" | "six_hours_before" | "two_hours_before" | "thirty_minutes_before" | "custom";
+export type ReminderStatusDb = "pending" | "processed" | "failed" | "canceled";
+
+export type InterventionReminderConfig = {
+  enabledTypes: ReminderTypeDb[];
+  dailyTime: string;
+  customAt?: string | null;
+};
+
+export type InterventionReminderItem = {
+  id: string;
+  type: string;
+  rawType: ReminderTypeDb;
+  remindAt: string;
+  remindAtIso: string;
+  status: string;
+  rawStatus: ReminderStatusDb;
+  processedAt?: string | null;
+  errorMessage?: string | null;
+};
 
 export type InterventionPointItem = {
   id: string;
@@ -65,6 +85,8 @@ export type InterventionDetail = InterventionItem & {
   startTimeInput: string;
   endTimeInput: string;
   points: InterventionPointItem[];
+  reminders: InterventionReminderItem[];
+  reminderConfig: InterventionReminderConfig;
 };
 
 export type InterventionSummary = {

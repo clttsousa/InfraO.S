@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import type { PoolClient } from "pg";
 import { redirect } from "next/navigation";
 import { writeOrderAuditEvent } from "@/lib/audit";
+import { getSafeActionErrorMessage, isNextRedirectError } from "@/lib/action-errors";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { toDateTimeLocalValue } from "@/lib/format";
@@ -240,7 +241,7 @@ export async function createServiceOrderAction(formData: FormData) {
     redirectTarget = `/orders?selected=${orderId}&success=${encodeMessage("O.S. cadastrada com sucesso.")}`;
   } catch (error) {
     await client.query("rollback");
-    const message = error instanceof Error && /duplicate key/i.test(error.message) ? "Já existe uma O.S. com esse número." : error instanceof Error ? error.message : "Não foi possível salvar a O.S.";
+    const message = error instanceof Error && /duplicate key/i.test(error.message) ? "Já existe uma O.S. com esse número." : getSafeActionErrorMessage(error, "Não foi possível salvar a O.S.");
     redirectTarget = `/orders/new?error=${encodeMessage(message)}`;
   } finally {
     client.release();
@@ -358,7 +359,7 @@ export async function updateServiceOrderAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "success", "O.S. atualizada com sucesso.");
   } catch (error) {
     await client.query("rollback");
-    const message = error instanceof Error && /duplicate key/i.test(error.message) ? "Já existe uma O.S. com esse número." : error instanceof Error ? error.message : "Não foi possível atualizar a O.S.";
+    const message = error instanceof Error && /duplicate key/i.test(error.message) ? "Já existe uma O.S. com esse número." : getSafeActionErrorMessage(error, "Não foi possível atualizar a O.S.");
     redirectTarget = appendMessage(redirectTo, "error", message);
   } finally {
     client.release();
@@ -404,7 +405,7 @@ export async function updateServiceOrderStatusAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "success", "Status atualizado com sucesso.");
   } catch (error) {
     await client.query("rollback");
-    redirectTarget = appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível alterar o status.");
+    redirectTarget = appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível alterar o status."));
   } finally { client.release(); }
 
   redirect(redirectTarget);
@@ -447,7 +448,7 @@ export async function finalizeServiceOrderAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "success", "O.S. finalizada com sucesso.");
   } catch (error) {
     await client.query("rollback");
-    redirectTarget = appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível finalizar a O.S.");
+    redirectTarget = appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível finalizar a O.S."));
   } finally { client.release(); }
   redirect(redirectTarget);
 }
@@ -485,7 +486,7 @@ export async function reopenServiceOrderAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "success", "O.S. reaberta com sucesso.");
   } catch (error) {
     await client.query("rollback");
-    redirectTarget = appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível reabrir a O.S.");
+    redirectTarget = appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível reabrir a O.S."));
   } finally { client.release(); }
   redirect(redirectTarget);
 }
@@ -523,7 +524,7 @@ export async function cancelServiceOrderAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "success", "O.S. cancelada com sucesso.");
   } catch (error) {
     await client.query("rollback");
-    redirectTarget = appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível cancelar a O.S.");
+    redirectTarget = appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível cancelar a O.S."));
   } finally { client.release(); }
   redirect(redirectTarget);
 }
@@ -548,7 +549,7 @@ export async function addServiceOrderNoteAction(formData: FormData) {
     redirectTarget = appendMessage(redirectTo, "success", "Observação adicionada com sucesso.");
   } catch (error) {
     await client.query("rollback");
-    redirectTarget = appendMessage(redirectTo, "error", error instanceof Error ? error.message : "Não foi possível salvar a observação.");
+    redirectTarget = appendMessage(redirectTo, "error", getSafeActionErrorMessage(error, "Não foi possível salvar a observação."));
   } finally { client.release(); }
   redirect(redirectTarget);
 }
@@ -576,11 +577,10 @@ export async function saveOrderViewAction(formData: FormData) {
     revalidatePath("/orders");
     redirect(`/orders?${queryString}${queryString ? "&" : ""}success=${encodeMessage("Visão salva com sucesso.")}`);
   } catch (error) {
+    if (isNextRedirectError(error)) throw error;
     const message = isMissingSavedViewsTableError(error)
       ? "Aplique a migration database/11_saved_order_views.sql para habilitar filtros salvos."
-      : error instanceof Error
-        ? error.message
-        : "Não foi possível salvar a visão atual.";
+      : getSafeActionErrorMessage(error, "Não foi possível salvar a visão atual.");
     redirect(`/orders?${queryString}${queryString ? "&" : ""}error=${encodeMessage(message)}`);
   }
 }
@@ -598,7 +598,8 @@ export async function deleteOrderViewAction(formData: FormData) {
     revalidatePath("/orders");
     redirect(`/orders?success=${encodeMessage("Filtro salvo removido.")}`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Não foi possível remover o filtro salvo.";
+    if (isNextRedirectError(error)) throw error;
+    const message = getSafeActionErrorMessage(error, "Não foi possível remover o filtro salvo.");
     redirect(`/orders?error=${encodeMessage(message)}`);
   }
 }

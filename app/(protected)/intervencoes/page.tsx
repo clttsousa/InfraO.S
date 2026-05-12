@@ -7,6 +7,9 @@ import { ButtonLink, FeedbackMessage, PageHeader, SelectInput, Surface, TextInpu
 import { INTERVENTION_SOURCE_OPTIONS, INTERVENTION_STATUS_OPTIONS, INTERVENTION_TYPE_OPTIONS } from "@/lib/constants";
 import { buildInterventionsQuery, getInterventionsPageData, getInternalUsers, parseInterventionFilters } from "@/lib/data";
 import type { InternalUserItem, InterventionFilters, InterventionQuickFilter, InterventionSummary } from "@/types";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
+
+export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -81,8 +84,8 @@ export default async function InterventionsPage({ searchParams }: { searchParams
       <Breadcrumbs items={[{ label: "Intervenções" }]} showHome />
 
       {loadError ? <FeedbackMessage type="error" title="Módulo indisponível">{loadError}</FeedbackMessage> : null}
-      {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-      {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+      {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+      {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
 
       <PageHeader
         eyebrow="Agenda operacional da infraestrutura"

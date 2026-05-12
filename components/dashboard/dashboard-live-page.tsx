@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, MapPin, Radio } from "lucide-react";
+import { AlertTriangle, CalendarClock, ClipboardList, MapPin, Radio, Zap } from "lucide-react";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { DashboardTable } from "@/components/dashboard/dashboard-table";
 import { useRealtime } from "@/components/realtime/realtime-provider";
@@ -119,6 +119,23 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
         description="Leitura rápida das ordens que exigem atenção, com cards clicáveis e visão objetiva da operação."
         actions={<div className={`badge-base ${isConnected ? "badge-success" : "badge-neutral"}`}><Radio className="h-3.5 w-3.5" />{isConnected ? "Ao vivo" : "Reconectando"}</div>}
       />
+
+      {data ? (
+        <Surface className="mobile-priority-panel p-4 lg:hidden">
+          <div className="flex items-start gap-3">
+            <div className="mobile-priority-icon"><Zap className="h-4 w-4" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="app-eyebrow text-[10px] font-medium">Atenção agora</p>
+              <h3 className="app-title mt-1 text-base font-semibold">Prioridade operacional</h3>
+              <div className="mobile-priority-grid mt-3">
+                <Link href="/orders?lateOnly=1" className="mobile-priority-chip danger"><AlertTriangle className="h-4 w-4" /><span>{data.stats.atrasadas} O.S. atrasadas</span></Link>
+                <Link href="/intervencoes?quick=today" className="mobile-priority-chip"><CalendarClock className="h-4 w-4" /><span>{data.interventionSummary.today} hoje</span></Link>
+                <Link href="/orders?dueToday=1" className="mobile-priority-chip warning"><ClipboardList className="h-4 w-4" /><span>{data.stats.pendentes} pendentes</span></Link>
+              </div>
+            </div>
+          </div>
+        </Surface>
+      ) : null}
 
       {!data ? (
         <Surface className="p-5"><EmptyState title="Dashboard indisponível" description="A aplicação não conseguiu consultar o banco neste momento." /></Surface>

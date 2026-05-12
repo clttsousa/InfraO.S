@@ -8,23 +8,41 @@ export function FormStateGuard({ formId, message = "Você tem alterações não 
     if (!form) return;
 
     let dirty = false;
-    const markDirty = () => { dirty = true; };
-    const clearDirty = () => { dirty = false; };
+    let submitting = false;
+
+    const markDirty = () => {
+      if (!submitting) dirty = true;
+    };
+    const clearDirty = () => {
+      dirty = false;
+    };
+    const handleSubmit = (event: SubmitEvent) => {
+      if (submitting) {
+        event.preventDefault();
+        return;
+      }
+
+      submitting = true;
+      clearDirty();
+      window.setTimeout(() => {
+        submitting = false;
+      }, 9000);
+    };
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!dirty) return;
+      if (!dirty || submitting) return;
       event.preventDefault();
       event.returnValue = message;
     };
 
     form.addEventListener("input", markDirty);
     form.addEventListener("change", markDirty);
-    form.addEventListener("submit", clearDirty);
+    form.addEventListener("submit", handleSubmit);
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       form.removeEventListener("input", markDirty);
       form.removeEventListener("change", markDirty);
-      form.removeEventListener("submit", clearDirty);
+      form.removeEventListener("submit", handleSubmit);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [formId, message]);

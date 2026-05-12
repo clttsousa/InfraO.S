@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BellRing, CalendarClock, ClipboardList, LayoutDashboard, LogOut, Menu as MenuIcon, ShieldCheck, X } from "lucide-react";
+import { BellRing, CalendarClock, ClipboardList, LayoutDashboard, LogOut, Menu as MenuIcon, ShieldCheck, X, PlusSquare, Settings, UserCog, History, BarChart3, Users, UserRound } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import { getNavigationItems } from "@/lib/navigation";
 import { cn } from "@/components/shared/utils";
@@ -18,6 +18,37 @@ const primaryItems = [
 ];
 
 const primaryHrefs = new Set(primaryItems.map((item) => item.href));
+
+const menuGroups = [
+  {
+    title: "Operação",
+    description: "Ações usadas no atendimento diário",
+    items: [
+      { href: "/orders/new", label: "Nova O.S.", icon: PlusSquare },
+      { href: "/orders", label: "Ordens", icon: ClipboardList },
+      { href: "/intervencoes", label: "Intervenções", icon: CalendarClock },
+      { href: "/notifications", label: "Alertas", icon: BellRing }
+    ]
+  },
+  {
+    title: "Gestão",
+    description: "Controle administrativo e acompanhamento",
+    items: [
+      { href: "/technicians", label: "Técnicos", icon: Users, adminOnly: true },
+      { href: "/users", label: "Usuários", icon: UserCog, adminOnly: true },
+      { href: "/reports", label: "Relatórios", icon: BarChart3 },
+      { href: "/audit", label: "Auditoria", icon: History, adminOnly: true }
+    ]
+  },
+  {
+    title: "Sistema",
+    description: "Preferências, acesso e encerramento",
+    items: [
+      { href: "/settings", label: "Configurações", icon: Settings, adminOnly: true },
+      { href: "/profile", label: "Meu acesso", icon: UserRound }
+    ]
+  }
+];
 
 function isActive(pathname: string, matchers: string[]) {
   return matchers.some((matcher) => pathname === matcher || pathname.startsWith(`${matcher}/`));
@@ -48,8 +79,13 @@ export function MobileBottomNav({ user }: { user: SessionUser }) {
     if (typeof navigator !== "undefined") setDeviceName(getDeviceFriendlyUserAgent(navigator.userAgent));
   }, []);
 
+  const permittedMenuGroups = useMemo(() => menuGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.adminOnly || user.role === "ADMIN")
+  })).filter((group) => group.items.length > 0), [user.role]);
+
   const menuItems = useMemo(() => getNavigationItems(user).filter((item) => !primaryHrefs.has(item.href)), [user]);
-  const menuActive = menuItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const menuActive = [...menuItems, ...permittedMenuGroups.flatMap((group) => group.items)].some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
 
   function handleLogout() {
     startTransition(async () => {
@@ -113,18 +149,28 @@ export function MobileBottomNav({ user }: { user: SessionUser }) {
               <p className="mt-1 truncate text-xs text-[var(--text-tertiary)]">Acesso nominal auditado</p>
             </div>
 
-            <nav className="mobile-menu-grid" aria-label="Mais opções">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                return (
-                  <Link key={item.href} href={item.href} className={cn("mobile-menu-link", active ? "is-active" : "")} aria-current={active ? "page" : undefined}>
-                    <Icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+            <div className="mobile-menu-sections" aria-label="Mais opções">
+              {permittedMenuGroups.map((group) => (
+                <section key={group.title} className="mobile-menu-section">
+                  <div className="mobile-menu-section-header">
+                    <p className="mobile-menu-section-title">{group.title}</p>
+                    <p className="mobile-menu-section-description">{group.description}</p>
+                  </div>
+                  <nav className="mobile-menu-grid" aria-label={group.title}>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                      return (
+                        <Link key={`${group.title}-${item.href}`} href={item.href} className={cn("mobile-menu-link", active ? "is-active" : "")} aria-current={active ? "page" : undefined}>
+                          <Icon className="h-5 w-5" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </section>
+              ))}
+            </div>
 
             <div className="mobile-menu-actions">
               <button type="button" onClick={handleLogout} disabled={pending} className="mobile-menu-logout">

@@ -2,6 +2,7 @@ import { INTERVENTION_SOURCE_OPTIONS, INTERVENTION_STATUS_OPTIONS, INTERVENTION_
 import { query } from "@/lib/db";
 import { formatDate, formatDateTime, APP_TIME_ZONE } from "@/lib/format";
 import { formatInterventionStatus, formatInterventionType } from "@/lib/interventions";
+import { REMINDER_STATUS_LABELS, REMINDER_TYPE_LABELS, normalizeReminderConfig } from "@/lib/intervention-reminder-config";
 import { isUuid } from "@/lib/validation";
 import type {
   InterventionDetail,
@@ -10,6 +11,9 @@ import type {
   InterventionListResult,
   InterventionPointItem,
   InterventionQuickFilter,
+  InterventionReminderItem,
+  ReminderStatusDb,
+  ReminderTypeDb,
   InterventionSourceDb,
   InterventionStatusDb,
   InterventionSummary,
@@ -32,6 +36,7 @@ type InterventionRow = {
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
+  reminder_config: unknown;
   points_count: string | number;
   is_late: boolean;
 };
@@ -42,6 +47,15 @@ type InterventionPointRow = {
   maps_url: string;
   created_at: string;
   updated_at: string;
+};
+
+type InterventionReminderRow = {
+  id: string;
+  reminder_type: ReminderTypeDb;
+  remind_at: string;
+  status: ReminderStatusDb;
+  processed_at: string | null;
+  error_message: string | null;
 };
 
 const typeValues = new Set<string>(INTERVENTION_TYPE_OPTIONS.map((item) => item.value));
@@ -185,6 +199,7 @@ const baseInterventionSelect = `
     creator.full_name as created_by_name,
     ie.created_at,
     ie.updated_at,
+    ie.reminder_config,
     coalesce(point_counts.points_count, 0)::text as points_count,
     (ie.status = 'ATRASADO' or (ie.status not in ('CONCLUIDO', 'CANCELADO') and ie.end_at < now())) as is_late
   from infra_events ie
@@ -269,6 +284,20 @@ function mapPointRow(row: InterventionPointRow): InterventionPointItem {
   };
 }
 
+function mapReminderRow(row: InterventionReminderRow): InterventionReminderItem {
+  return {
+    id: row.id,
+    type: REMINDER_TYPE_LABELS[row.reminder_type] ?? row.reminder_type,
+    rawType: row.reminder_type,
+    remindAt: formatDateTime(row.remind_at),
+    remindAtIso: row.remind_at,
+    status: REMINDER_STATUS_LABELS[row.status] ?? row.status,
+    rawStatus: row.status,
+    processedAt: row.processed_at ? formatDateTime(row.processed_at) : null,
+    errorMessage: row.error_message
+  };
+}
+
 export async function getInterventionsPageData(filters: InterventionFilters): Promise<InterventionListResult> {
   const built = buildInterventionFilters(filters);
 
@@ -335,15 +364,26 @@ export async function getInterventionDetail(id: string): Promise<InterventionDet
   const row = result.rows[0];
   if (!row) return null;
 
-  const pointsResult = await query<InterventionPointRow>(
-    `
-      select id::text, label, maps_url, created_at, updated_at
-      from infra_event_points
-      where event_id = $1::uuid
-      order by created_at asc, label asc
-    `,
-    [id]
-  );
+  const [pointsResult, remindersResult] = await Promise.all([
+    query<InterventionPointRow>(
+      `
+        select id::text, label, maps_url, created_at, updated_at
+        from infra_event_points
+        where event_id = $1::uuid
+        order by created_at asc, label asc
+      `,
+      [id]
+    ),
+    query<InterventionReminderRow>(
+      `
+        select id::text, reminder_type, remind_at::text, status, processed_at::text, error_message
+        from reminders
+        where event_id = $1::uuid
+        order by remind_at asc, created_at asc
+      `,
+      [id]
+    )
+  ]);
 
   return {
     ...mapInterventionRow(row),
@@ -351,6 +391,8 @@ export async function getInterventionDetail(id: string): Promise<InterventionDet
     dateInput: toDateInput(row.start_at),
     startTimeInput: toTimeInput(row.start_at),
     endTimeInput: toTimeInput(row.end_at),
-    points: pointsResult.rows.map(mapPointRow)
+    points: pointsResult.rows.map(mapPointRow),
+    reminders: remindersResult.rows.map(mapReminderRow),
+    reminderConfig: normalizeReminderConfig(row.reminder_config)
   };
 }

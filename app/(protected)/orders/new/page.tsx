@@ -9,6 +9,9 @@ import { ORDER_PRIORITY_OPTIONS } from "@/lib/constants";
 import { getInternalUsers, getTechnicians } from "@/lib/data";
 import { parseServiceOrderText } from "@/lib/order-parser";
 import { requireSession } from "@/lib/session";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
+
+export const dynamic = "force-dynamic";
 
 function getStringValue(value: string | string[] | undefined) {
   return typeof value === "string" ? value : "";
@@ -70,8 +73,8 @@ export default async function NewOrderPage({ searchParams }: { searchParams?: Pr
             {rawText ? <span className="badge-base badge-success">Parser aplicado</span> : null}
           </div>
 
-          {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-          {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+          {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+          {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
           <FormHint>Os campos obrigatórios aparecem primeiro. Se você sair da página com alterações, o navegador avisa.</FormHint>
 
           <form id="order-create-form" action={createServiceOrderAction} className="mt-5 space-y-4">

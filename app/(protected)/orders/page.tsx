@@ -14,6 +14,9 @@ import { getInternalUsers, getSavedOrderViews, getServiceOrdersPageData, getTech
 import { buildOrderQuery, DEFAULT_ORDER_PAGE_SIZE, getParamValue, ORDER_PAGE_SIZE_OPTIONS, parseOrderFilters } from "@/lib/filter-params";
 import { requireSession } from "@/lib/session";
 import type { InternalUserItem, OrderFilters as OrderFiltersType, SavedOrderView, TechnicianItem } from "@/types";
+import { decodeSearchParamMessage } from "@/lib/search-param-feedback";
+
+export const dynamic = "force-dynamic";
 
 function removeFilterKeys(baseQuery: URLSearchParams, keys: string[]) {
   const next = new URLSearchParams(baseQuery);
@@ -272,8 +275,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       <div className="min-w-0">
         <div className="space-y-3.5 p-4 md:p-5">
           <Breadcrumbs items={[{ label: "Ordens" }]} showHome />
-          {success ? <FeedbackMessage type="success">{decodeURIComponent(success)}</FeedbackMessage> : null}
-          {error ? <FeedbackMessage type="error">{decodeURIComponent(error)}</FeedbackMessage> : null}
+          {success ? <FeedbackMessage type="success">{decodeSearchParamMessage(success)}</FeedbackMessage> : null}
+          {error ? <FeedbackMessage type="error">{decodeSearchParamMessage(error)}</FeedbackMessage> : null}
           {loadError ? <FeedbackMessage type="error">{loadError}</FeedbackMessage> : null}
           <PageHeader
             eyebrow="Operação diária"
