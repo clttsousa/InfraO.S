@@ -177,7 +177,7 @@ export function NotificationBell({ summary }: { summary: NotificationSummary }) 
 
   function acknowledge(item: NotificationItem) {
     if (item.category === 'activity') return;
-    if (item.category === 'intervention') {
+    if (item.category === 'intervention' || item.category === 'smart') {
       void markNotificationRead(item.id).then(refreshSummary).catch(() => undefined);
     }
     setAcknowledgedIds((current) => {

@@ -37,7 +37,7 @@ function toInterventionTimeLabel(startAt: string, endAt: string) {
 }
 
 async function getDashboardDataUncached(): Promise<DashboardData> {
-  const [statsResult, dueTodayResult, overdueResult, staleResult, activitiesResult, techSummaryResult, interventionsResult, interventionSummaryResult, dueTodayCountResult, staleCountResult, pendingRemindersResult] = await Promise.all([
+  const [statsResult, dueTodayResult, overdueResult, staleResult, activitiesResult, techSummaryResult, interventionsResult, interventionSummaryResult, dueTodayCountResult, staleCountResult, pendingRemindersResult, failedNotificationRulesResult] = await Promise.all([
     query<DashboardStatRow>(`
       select
         count(*) filter (where status = 'ABERTA')::text as abertas,
@@ -156,7 +156,13 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
       where r.status = 'pending'
         and ie.archived_at is null
         and ie.status not in ('CONCLUIDO', 'CANCELADO')
-    `)
+    `),
+    query<DashboardCountRow>(`
+      select count(*)::text as total
+      from notification_rule_logs
+      where error_message is not null
+        and created_at >= now() - interval '24 hours'
+    `).catch(() => ({ rows: [{ total: "0" }] } as { rows: DashboardCountRow[] }))
   ]);
 
   const stats = statsResult.rows[0] ?? {
@@ -223,12 +229,13 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
       tomorrowInterventions: Number(interventionSummaryRow.tomorrow ?? 0),
       lateInterventions: Number(interventionSummaryRow.late ?? 0),
       criticalNotifications: Number(stats.atrasadas ?? 0) + Number(interventionSummaryRow.late ?? 0),
-      pendingReminders: Number(pendingRemindersResult.rows[0]?.total ?? 0)
+      pendingReminders: Number(pendingRemindersResult.rows[0]?.total ?? 0),
+      failedNotificationRules: Number(failedNotificationRulesResult.rows[0]?.total ?? 0)
     }
   };
 }
 
-const getDashboardDataCached = unstable_cache(getDashboardDataUncached, ["dashboard-data-v6.17"], { revalidate: 60, tags: ["dashboard"] });
+const getDashboardDataCached = unstable_cache(getDashboardDataUncached, ["dashboard-data-v6.18"], { revalidate: 60, tags: ["dashboard"] });
 
 export async function getDashboardData(): Promise<DashboardData> {
   return getDashboardDataCached();

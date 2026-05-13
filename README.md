@@ -1,17 +1,54 @@
-# InfraOS v6.17.0
+# InfraOS v6.18.0
 
 Painel interno para operação de ordens de serviço, intervenções programadas, lembretes configuráveis, notificações e auditoria.
 
 ## O que entrou nesta versão
-- paginação server-side revisada/implementada em Ordens, Intervenções, Notificações, Usuários e Auditoria;
-- busca movida para o banco quando possível, evitando filtrar listas grandes apenas no cliente;
-- filtros importantes preservados na URL para atualizar, compartilhar link e abrir detalhes sem perder contexto;
-- central de Notificações paginada por categoria: Todas, Intervenções, Ordens, Sistema e Lidas;
-- Auditoria preparada para crescer com paginação, filtros por período/usuário/entidade/ação e busca textual;
-- Usuários internos com busca/filtros/paginação no servidor;
-- Intervenções com total de registros, página atual, próxima/anterior e seletor de itens por página;
-- componente reutilizável `PaginationFooter` para desktop/mobile;
-- migration `database/20_performance_indexes.sql` com índices de performance e busca.
+- novo **Motor de Notificações Inteligentes** em Configurações > Notificações inteligentes;
+- regras configuráveis com evento, entidade, condição JSON, severidade, destinatários, canais, template, cooldown e status ativo/inativo;
+- níveis de severidade: informativa, atenção, importante e crítica;
+- destinatários inteligentes: responsável, técnico, criador, administradores, operadores, todos e base para usuários específicos;
+- preferências por usuário: notificações internas, Push PWA, silenciar informativas, manter críticas ativas, pausar até horário e horário silencioso simples;
+- cooldown/idempotência para evitar spam por regra, entidade e janela de tempo;
+- agrupamentos simples na central de notificações por `group_key`;
+- logs de execução em `notification_rule_logs`, mostrando match, cooldown, erro e notificação gerada;
+- central de notificações com filtros por severidade e entidade, além dos filtros já existentes por categoria/leitura;
+- ações rápidas em notificações inteligentes: abrir destino, adiar por 1h e silenciar regra;
+- cron de lembretes passa a executar também o motor de regras inteligentes;
+- migration `database/21_notification_rules.sql` com tabelas, colunas e índices do motor.
+
+
+## V6.18.0 — Motor de Notificações Inteligentes
+
+Esta versão transforma as notificações do InfraOS em uma central operacional de alertas inteligentes. O sistema agora tem regras configuráveis, severidade, destinatários, preferências por usuário, cooldown, agrupamento simples, logs de execução e ações rápidas.
+
+Validação executada:
+
+```bash
+npm ci --ignore-scripts
+npm run typecheck
+```
+
+O typecheck foi aprovado. O build local deve ser validado também na Vercel/ambiente real, mantendo a observação das versões anteriores sobre encerramento em `Collecting page data` em alguns ambientes locais.
+
+Migration nova obrigatória:
+
+```text
+database/21_notification_rules.sql
+```
+
+Execute esta migration após `database/20_performance_indexes.sql`. Ela adiciona `notification_rules`, `notification_rule_logs`, `notification_preferences`, `notification_deliveries` e amplia `app_notifications` com severidade, entidade, ação, agrupamento, regra vinculada e controle de adiamento/silêncio.
+
+### Como testar o motor
+
+1. Aplique `database/21_notification_rules.sql` no Supabase.
+2. Suba o projeto e faça login como admin.
+3. Acesse **Configurações > Notificações inteligentes**.
+4. Verifique as regras iniciais criadas pela migration.
+5. Crie ou edite uma regra, configurando severidade, destinatários, canais, template e cooldown.
+6. Clique em **Executar motor** para gerar alertas de teste com base nos dados atuais.
+7. Acesse **Notificações** e teste filtros por severidade, entidade e categoria.
+8. Em uma notificação inteligente, teste **Adiar 1h** e **Silenciar regra**.
+9. Execute `/api/cron/reminders` com `CRON_SECRET` para validar a execução junto da rotina de lembretes.
 
 ## V6.17.0 — Performance, Paginação e Busca
 

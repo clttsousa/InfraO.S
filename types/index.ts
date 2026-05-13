@@ -347,6 +347,7 @@ export type DashboardData = {
     lateInterventions: number;
     criticalNotifications: number;
     pendingReminders: number;
+    failedNotificationRules: number;
   };
 };
 
@@ -436,6 +437,8 @@ export type ReportsData = {
 
 
 export type NotificationLevel = "danger" | "warning" | "info" | "success";
+export type NotificationSeverity = "info" | "attention" | "important" | "critical";
+export type NotificationEntityType = "order" | "intervention" | "system";
 
 export type NotificationItem = {
   id: string;
@@ -443,12 +446,21 @@ export type NotificationItem = {
   description: string;
   href: string;
   level: NotificationLevel;
+  severity: NotificationSeverity;
+  eventType?: string | null;
+  entityType: NotificationEntityType;
+  entityId?: string | null;
+  groupKey?: string | null;
+  actionLabel?: string | null;
   when?: string;
+  whenIso?: string | null;
   read?: boolean;
-  category: "late" | "dueToday" | "stale" | "activity" | "intervention";
+  category: "late" | "dueToday" | "stale" | "activity" | "intervention" | "smart";
 };
 
 export type NotificationFeedFilter = "all" | "interventions" | "orders" | "system" | "read";
+export type NotificationSeverityFilter = "all" | NotificationSeverity;
+export type NotificationEntityFilter = "all" | NotificationEntityType;
 
 export type NotificationSummary = {
   total: number;
@@ -459,8 +471,21 @@ export type NotificationSummary = {
     recentActivities: number;
     interventions: number;
     read: number;
+    critical: number;
+    important: number;
+    attention: number;
+    smart: number;
   };
   items: NotificationItem[];
+  groupedAlerts: Array<{
+    key: string;
+    title: string;
+    description: string;
+    count: number;
+    href: string;
+    severity: NotificationSeverity;
+    entityType: NotificationEntityType;
+  }>;
   activeAlertIds: {
     late: string[];
     dueToday: string[];
@@ -473,6 +498,8 @@ export type NotificationSummary = {
   totalPages: number;
   itemsTotal: number;
   filter: NotificationFeedFilter;
+  severityFilter: NotificationSeverityFilter;
+  entityFilter: NotificationEntityFilter;
 };
 
 export type AuditEventsFilters = {

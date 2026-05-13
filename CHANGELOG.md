@@ -1,5 +1,19 @@
 # Changelog
 
+## V6.18.0 — Motor de Notificações Inteligentes
+
+- Criada a área **Configurações > Notificações inteligentes** para criar, editar, ativar e desativar regras de alerta.
+- Regras agora possuem nome, descrição, tipo de evento, entidade, condições JSON, severidade, destinatários, canais, template, ação, cooldown e status ativo/inativo.
+- Adicionados níveis de severidade: informativa, atenção, importante e crítica.
+- Central de Notificações passou a exibir severidade, entidade, filtros por severidade, filtros por entidade e agrupamentos inteligentes.
+- Adicionadas preferências por usuário: receber notificações internas, receber Push PWA, silenciar informativas, manter críticas ativas, pausar até horário e horário silencioso simples.
+- Adicionado cooldown por regra para evitar notificações repetidas da mesma entidade na mesma janela.
+- Adicionados logs de execução das regras com match, sem match, notificação criada, cooldown/preferência e erro.
+- Adicionadas ações rápidas para notificações inteligentes: abrir destino, adiar 1h e silenciar regra.
+- `/api/cron/reminders` agora processa lembretes de intervenção e também executa o motor de regras inteligentes.
+- Dashboard operacional passou a exibir regras de notificação com falha nas últimas 24h.
+- Criada migration `database/21_notification_rules.sql` com novas tabelas, colunas e índices de suporte.
+
 ## V6.17.0 — Performance, Paginação e Busca
 
 - Intervenções passaram a usar paginação server-side com total, página atual, próxima/anterior e seletor de quantidade por página.

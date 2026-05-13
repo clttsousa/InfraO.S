@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runNotificationRulesOnce } from "@/lib/notifications/rule-engine";
 import { processInterventionReminders } from "@/lib/reminders";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +30,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await processInterventionReminders();
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    const reminders = await processInterventionReminders();
+    const smartRules = await runNotificationRulesOnce().catch((error) => ({
+      ok: false,
+      message: error instanceof Error ? error.message : "Falha ao executar motor de notificações inteligentes."
+    }));
+
+    return NextResponse.json({ ok: true, reminders, smartRules, checkedAt: new Date().toISOString() }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("[infraos] cron reminders error", error);
     return NextResponse.json(

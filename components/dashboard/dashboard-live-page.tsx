@@ -241,8 +241,9 @@ export function DashboardLivePage({ initialData, forbidden, initialError }: { in
     { label: "O.S. sem atualização", value: data.operationalSummary.staleOrders, caption: "sem movimento há 24h+", href: "/orders?staleOnly=1", tone: "neutral", icon: <TimerReset className="h-4 w-4" /> },
     { label: "Intervenções hoje", value: data.operationalSummary.todayInterventions, caption: "acompanhar agora", href: "/intervencoes?quick=today", tone: "primary", icon: <CalendarClock className="h-4 w-4" /> },
     { label: "Intervenções amanhã", value: data.operationalSummary.tomorrowInterventions, caption: "preparar avisos", href: "/intervencoes?quick=tomorrow", tone: "primary", icon: <Wrench className="h-4 w-4" /> },
-    { label: "Notificações críticas", value: data.operationalSummary.criticalNotifications, caption: "ordens/intervenções críticas", href: "/notifications", tone: data.operationalSummary.criticalNotifications > 0 ? "danger" : "success", icon: <BellRing className="h-4 w-4" /> },
-    { label: "Lembretes pendentes", value: data.operationalSummary.pendingReminders, caption: "avisos configuráveis", href: "/intervencoes", tone: data.operationalSummary.pendingReminders > 0 ? "warning" : "success", icon: <Clock3 className="h-4 w-4" /> }
+    { label: "Notificações críticas", value: data.operationalSummary.criticalNotifications, caption: "ordens/intervenções críticas", href: "/notifications?severity=critical", tone: data.operationalSummary.criticalNotifications > 0 ? "danger" : "success", icon: <BellRing className="h-4 w-4" /> },
+    { label: "Lembretes pendentes", value: data.operationalSummary.pendingReminders, caption: "avisos configuráveis", href: "/intervencoes", tone: data.operationalSummary.pendingReminders > 0 ? "warning" : "success", icon: <Clock3 className="h-4 w-4" /> },
+    { label: "Regras com falha", value: data.operationalSummary.failedNotificationRules, caption: "erros nas últimas 24h", href: "/settings/notifications", tone: data.operationalSummary.failedNotificationRules > 0 ? "danger" : "success", icon: <BellRing className="h-4 w-4" /> }
   ] : [], [data]);
 
   return (

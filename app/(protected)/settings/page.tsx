@@ -46,9 +46,12 @@ export default async function SettingsPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="app-surface-muted rounded-[var(--radius-control)] px-4 py-3 text-sm leading-6 text-[var(--text-secondary)]">
                 <div className="flex items-center gap-2 font-semibold text-[var(--text-primary)]"><BellRing className="h-4 w-4 text-[var(--primary)]" />Central de notificações</div>
-                A V6.15.0 separa alertas por Todas, Intervenções, Ordens, Sistema e Lidas.
+                A V6.18.0 adiciona regras inteligentes, severidade, destinatários, cooldown e preferências por usuário.
               </div>
-              <Link href="/notifications" className="app-surface-muted rounded-[var(--radius-control)] border border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--primary)] transition hover:-translate-y-0.5">Abrir central de notificações</Link>
+              <div className="grid grid-cols-1 gap-3">
+                <Link href="/notifications" className="app-surface-muted rounded-[var(--radius-control)] border border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--primary)] transition hover:-translate-y-0.5">Abrir central de notificações</Link>
+                <Link href="/settings/notifications" className="app-surface-muted rounded-[var(--radius-control)] border border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--primary)] transition hover:-translate-y-0.5">Configurar notificações inteligentes</Link>
+              </div>
             </div>
           </Surface>
         </SettingsAccordionSection>
@@ -96,7 +99,7 @@ export default async function SettingsPage() {
               <div className="mt-4 space-y-3 text-sm text-[var(--text-secondary)]">
                 <div className="app-surface-muted rounded-[var(--radius-control)] px-4 py-3">Executar <span className="font-medium">npm run typecheck</span> e <span className="font-medium">npm run build</span> antes do deploy.</div>
                 <div className="app-surface-muted rounded-[var(--radius-control)] px-4 py-3">Validar login, filtros, lifecycle da O.S., intervenções, PWA e permissões administrativas.</div>
-                <div className="app-surface-muted rounded-[var(--radius-control)] px-4 py-3">Revisar <span className="font-medium">README.md</span>, <span className="font-medium">CHANGELOG.md</span> e <span className="font-medium">V6_15_0_RESUMO.md</span>.</div>
+                <div className="app-surface-muted rounded-[var(--radius-control)] px-4 py-3">Revisar <span className="font-medium">README.md</span>, <span className="font-medium">CHANGELOG.md</span> e <span className="font-medium">V6_18_0_RESUMO.md</span>.</div>
               </div>
             </Surface>
           </div>
